@@ -333,7 +333,7 @@
                 txtData.push(`  - Speed (RT): ${overallPracticeData.avgSpeed}s`);
                 txtData.push(`\n`);
 
-                txtData.push(`Block-by-Block Analysis:`);
+                txtData.push(`Round by Round Analysis:`);
                 for (let i = 0; i < practiceResults.length; i += PRACTICE_AVG_BLOCK_SIZE) {
                     const block = practiceResults.slice(i, i + PRACTICE_AVG_BLOCK_SIZE);
                     const blockStart = i + 1;
