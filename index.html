@@ -29,7 +29,7 @@
         </div>
         <div class="flex items-center gap-3">
             <div id="user-id" class="text-xs text-gray-500">User: Anonymous</div>
-            <button id="download-btn" class="px-3 py-1 bg-gray-400 text-white rounded" onclick="window.downloadResults()">Download CSV</button>
+            <button id="download-btn" class="px-3 py-1 bg-gray-400 text-white rounded" onclick="window.downloadResults()">Download Results (TXT)</button>
         </div>
     </div>
 
@@ -119,7 +119,10 @@
                         await delay(200);
                     }
                 }
-                isDuringCue = false; setTilesDisabled(false);
+                isDuringCue = false; 
+                // CRITICAL CHANGE: Start timer immediately after the cue/flash finishes
+                startTime = performance.now(); 
+                setTilesDisabled(false);
                 resolve();
             });
         }
@@ -131,7 +134,9 @@
         tiles.forEach(t=> t.addEventListener('click', async ()=>{
             if(isDuringCue || !isActive) return;
             const box = parseInt(t.dataset.box,10);
-            if(!startTime) startTime = performance.now();
+            
+            // NOTE: startTime is now set in flashSequence/nextTrial
+            
             t.classList.add('opacity-80'); setTimeout(()=> t.classList.remove('opacity-80'),120);
             clickBuffer.push(box);
 
@@ -140,7 +145,17 @@
                 isActive = false; setTilesDisabled(true);
                 let correct = 0; for(let i=0;i<currentExpectedSeq.length;i++){ if(clickBuffer[i] === currentExpectedSeq[i]) correct++; }
                 const score = correct / currentExpectedSeq.length;
-                const result = { phase: mode, trialNumber: trialIndex+1, pattern: currentPatternKey, expected: currentExpectedSeq, actual: clickBuffer, reactionTime_s: parseFloat(rt.toFixed(3)), correct: correct, score: score };
+                const result = { 
+                    phase: mode, 
+                    trialNumber: trialIndex+1, 
+                    pattern: currentPatternKey, 
+                    expected: currentExpectedSeq, 
+                    actual: clickBuffer, 
+                    reactionTime_s: parseFloat(rt.toFixed(3)), 
+                    correct: correct, 
+                    score: score,
+                    expectedLength: currentExpectedSeq.length
+                };
                 lastSummary.textContent = `${result.pattern.toUpperCase()}: ${result.correct}/${currentExpectedSeq.length}, ${result.reactionTime_s}s`;
                 results.push(result);
                 if(mode === 'test1'){ updateStatus('Waiting before next cue...', '', `${trialIndex+1}/${practiceQueue.length}`); await delay(TEST_PAUSE_MS); }
@@ -161,12 +176,11 @@
                 currentPatternKey = practiceQueue[trialIndex];
                 currentExpectedSeq = PATTERNS[currentPatternKey].sequence.slice();
                 await flashSequence(currentPatternKey, true);
-                resetTrialVars(); isActive = true; setTilesDisabled(false);
+                resetTrialVars(); isActive = true; // Timer started in flashSequence
             }else if(mode === 'test1' || mode === 'test2'){
                 if(trialIndex >= practiceQueue.length){ 
                     updateStatus('Test complete');
                     setTilesDisabled(true); 
-                    // Re-enable all main buttons
                     blockedBtn.disabled = false; 
                     randomBtn.disabled = false;
                     test1Btn.disabled = false; 
@@ -177,7 +191,7 @@
                 currentPatternKey = practiceQueue[trialIndex];
                 currentExpectedSeq = PATTERNS[currentPatternKey].sequence.slice();
                 await flashSequence(currentPatternKey, false);
-                resetTrialVars(); isActive = true; setTilesDisabled(false);
+                resetTrialVars(); isActive = true; // Timer started in flashSequence
             }
         }
 
@@ -221,16 +235,22 @@
 
         // Helper function to calculate averages
         function calculateAverages(data) {
-            if (data.length === 0) return { avgAccuracy: 0, avgSpeed: 0 };
-            const totalAccuracy = data.reduce((sum, d) => sum + d.score, 0);
+            if (data.length === 0) return { totalAccuracy: 0, avgSpeed: 0, count: 0 };
+            const totalCorrect = data.reduce((sum, d) => sum + d.correct, 0);
+            const totalPossible = data.reduce((sum, d) => sum + d.expectedLength, 0);
             const totalSpeed = data.reduce((sum, d) => sum + d.reactionTime_s, 0);
+            
+            const avgAccuracy = (totalPossible > 0) ? ((totalCorrect / totalPossible) * 100).toFixed(1) : 0;
+            const avgSpeed = (data.length > 0) ? (totalSpeed / data.length).toFixed(3) : 0;
+            
             return {
-                avgAccuracy: (totalAccuracy / data.length).toFixed(3),
-                avgSpeed: (totalSpeed / data.length).toFixed(3)
+                avgAccuracy: avgAccuracy, // As percentage, 1 decimal point
+                avgSpeed: avgSpeed,
+                count: data.length
             };
         }
 
-        // --- NEW/MODIFIED CSV DOWNLOAD FUNCTION ---
+        // --- NEW/MODIFIED DOWNLOAD FUNCTION to TXT ---
         window.downloadResults = function(){
             if(results.length === 0){ alert('No results to download. Please complete at least one phase.'); return; }
 
@@ -240,34 +260,31 @@
             
             const practiceMode = practiceType || (practiceResults.length > 0 ? (practiceResults[0].phase === 'blocked' ? 'Blocked' : 'Random') : 'N/A');
 
-            let csvData = [];
+            let txtData = [];
             
-            // 1. Practice Mode
-            csvData.push([`Practice_Type:${practiceMode}`].join(','));
+            // 1. Practice Mode Header
+            txtData.push(`--- Motor Skill Acquisition Results ---`);
+            txtData.push(`Practice Type: ${practiceMode}`);
+            txtData.push(`Date/Time: ${new Date().toLocaleString()}`);
+            txtData.push(`-------------------------------------`);
             
             // Function to add phase data and averages
             const addPhaseData = (phaseName, data) => {
+                txtData.push(`\n## ${phaseName.toUpperCase()} DETAILS (Total Trials: ${data.length})`);
+                
                 // Round-by-round data
                 data.forEach((r, index) => {
-                    const row = [
-                        `${phaseName}_Round_${index + 1}`,
-                        r.correct,
-                        r.reactionTime_s
-                    ];
-                    csvData.push(row.join(','));
+                    const roundName = phaseName.toLowerCase().replace(' ', '_');
+                    const line = `${roundName}_round${index + 1}: accuracy ${r.correct}/${r.expectedLength}, speed ${r.reactionTime_s}s`;
+                    txtData.push(line);
                 });
                 
                 // Overall averages
                 if (data.length > 0) {
                     const { avgAccuracy, avgSpeed } = calculateAverages(data);
-                    csvData.push([
-                        `${phaseName}_Overall_Average_Accuracy`,
-                        avgAccuracy
-                    ].join(','));
-                    csvData.push([
-                        `${phaseName}_Overall_Average_Speed_s`,
-                        avgSpeed
-                    ].join(','));
+                    txtData.push(`\n${phaseName.toUpperCase()}_OVERALL:`);
+                    txtData.push(`- Average Accuracy: ${avgAccuracy}%`);
+                    txtData.push(`- Average Speed: ${avgSpeed}s`);
                 }
             };
             
@@ -275,18 +292,18 @@
             addPhaseData('Practice', practiceResults);
             
             // 3. Test 1 Details
-            addPhaseData('Test1', test1Results);
+            addPhaseData('Test 1', test1Results);
 
             // 4. Test 2 Details
-            addPhaseData('Test2', test2Results);
+            addPhaseData('Test 2', test2Results);
 
-            // Create CSV content
-            const csvContent = csvData.map(row => row.includes(',') ? `"${row}"` : row).join('\n');
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            // Create TXT content
+            const txtContent = txtData.join('\n');
+            const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'motor_skill_results_formatted.csv';
+            a.download = 'motor_skill_results.txt';
             a.click();
             URL.revokeObjectURL(url);
         }
