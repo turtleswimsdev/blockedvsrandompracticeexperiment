@@ -62,6 +62,8 @@
 
         const TRIALS_PER_BLOCK = 15; 
         const TEST_PAUSE_MS = 5000; 
+        // New constant for averaging practice trials
+        const PRACTICE_AVG_BLOCK_SIZE = 10; 
 
         const tiles = Array.from(document.querySelectorAll('.tile'));
         const phaseEl = document.getElementById('phase');
@@ -120,7 +122,7 @@
                     }
                 }
                 isDuringCue = false; 
-                // CRITICAL CHANGE: Start timer immediately after the cue/flash finishes
+                // CRITICAL CHANGE: Start timer immediately after the cue/flash finishes for THIS trial
                 startTime = performance.now(); 
                 setTilesDisabled(false);
                 resolve();
@@ -134,8 +136,6 @@
         tiles.forEach(t=> t.addEventListener('click', async ()=>{
             if(isDuringCue || !isActive) return;
             const box = parseInt(t.dataset.box,10);
-            
-            // NOTE: startTime is now set in flashSequence/nextTrial
             
             t.classList.add('opacity-80'); setTimeout(()=> t.classList.remove('opacity-80'),120);
             clickBuffer.push(box);
@@ -175,8 +175,10 @@
                 }
                 currentPatternKey = practiceQueue[trialIndex];
                 currentExpectedSeq = PATTERNS[currentPatternKey].sequence.slice();
+                
+                resetTrialVars(); // Set startTime to null BEFORE flash
                 await flashSequence(currentPatternKey, true);
-                resetTrialVars(); isActive = true; // Timer started in flashSequence
+                isActive = true; // Timer started in flashSequence
             }else if(mode === 'test1' || mode === 'test2'){
                 if(trialIndex >= practiceQueue.length){ 
                     updateStatus('Test complete');
@@ -190,8 +192,10 @@
                 }
                 currentPatternKey = practiceQueue[trialIndex];
                 currentExpectedSeq = PATTERNS[currentPatternKey].sequence.slice();
+                
+                resetTrialVars(); // Set startTime to null BEFORE flash
                 await flashSequence(currentPatternKey, false);
-                resetTrialVars(); isActive = true; // Timer started in flashSequence
+                isActive = true; // Timer started in flashSequence
             }
         }
 
@@ -233,9 +237,9 @@
         };
         document.addEventListener('DOMContentLoaded', ()=>{ window.resetGame(); });
 
-        // Helper function to calculate averages
+        // Helper function to calculate averages for a given set of data
         function calculateAverages(data) {
-            if (data.length === 0) return { totalAccuracy: 0, avgSpeed: 0, count: 0 };
+            if (data.length === 0) return { avgAccuracy: 0, avgSpeed: 0 };
             const totalCorrect = data.reduce((sum, d) => sum + d.correct, 0);
             const totalPossible = data.reduce((sum, d) => sum + d.expectedLength, 0);
             const totalSpeed = data.reduce((sum, d) => sum + d.reactionTime_s, 0);
@@ -246,7 +250,7 @@
             return {
                 avgAccuracy: avgAccuracy, // As percentage, 1 decimal point
                 avgSpeed: avgSpeed,
-                count: data.length
+                totalPossible: totalPossible
             };
         }
 
@@ -262,40 +266,62 @@
 
             let txtData = [];
             
-            // 1. Practice Mode Header
+            // 1. Header
             txtData.push(`--- Motor Skill Acquisition Results ---`);
             txtData.push(`Practice Type: ${practiceMode}`);
             txtData.push(`Date/Time: ${new Date().toLocaleString()}`);
             txtData.push(`-------------------------------------`);
             
-            // Function to add phase data and averages
-            const addPhaseData = (phaseName, data) => {
-                txtData.push(`\n## ${phaseName.toUpperCase()} DETAILS (Total Trials: ${data.length})`);
-                
-                // Round-by-round data
-                data.forEach((r, index) => {
-                    const roundName = phaseName.toLowerCase().replace(' ', '_');
-                    const line = `${roundName}_round${index + 1}: accuracy ${r.correct}/${r.expectedLength}, speed ${r.reactionTime_s}s`;
-                    txtData.push(line);
-                });
-                
-                // Overall averages
-                if (data.length > 0) {
-                    const { avgAccuracy, avgSpeed } = calculateAverages(data);
-                    txtData.push(`\n${phaseName.toUpperCase()}_OVERALL:`);
-                    txtData.push(`- Average Accuracy: ${avgAccuracy}%`);
-                    txtData.push(`- Average Speed: ${avgSpeed}s`);
-                }
-            };
             
-            // 2. Practice Details
-            addPhaseData('Practice', practiceResults);
+            // --- PRACTICE DETAILS (Averaged by 10 rounds) ---
             
-            // 3. Test 1 Details
-            addPhaseData('Test 1', test1Results);
+            const practicePhaseName = 'Practice';
+            if (practiceResults.length > 0) {
+                txtData.push(`\n## ${practicePhaseName.toUpperCase()} DETAILS (Total Trials: ${practiceResults.length})`);
 
-            // 4. Test 2 Details
-            addPhaseData('Test 2', test2Results);
+                // Block-by-block averages
+                for (let i = 0; i < practiceResults.length; i += PRACTICE_AVG_BLOCK_SIZE) {
+                    const block = practiceResults.slice(i, i + PRACTICE_AVG_BLOCK_SIZE);
+                    const blockStart = i + 1;
+                    const blockEnd = Math.min(i + PRACTICE_AVG_BLOCK_SIZE, practiceResults.length);
+                    
+                    const blockData = calculateAverages(block);
+
+                    txtData.push(`Practice_Rounds_${blockStart}-${blockEnd}: Average Accuracy ${blockData.avgAccuracy}%`);
+                }
+                
+                // Overall practice averages
+                const overallPracticeData = calculateAverages(practiceResults);
+                txtData.push(`\n${practicePhaseName.toUpperCase()}_OVERALL:`);
+                txtData.push(`- Average Accuracy: ${overallPracticeData.avgAccuracy}%`);
+                txtData.push(`- Average Speed: ${overallPracticeData.avgSpeed}s`);
+            } else {
+                txtData.push(`\n## PRACTICE DETAILS: No data recorded.`);
+            }
+
+            
+            // --- TEST 1 (Retention) DETAILS (Overall only) ---
+            const test1PhaseName = 'Test 1 (Retention)';
+            if (test1Results.length > 0) {
+                const overallTest1Data = calculateAverages(test1Results);
+                txtData.push(`\n## ${test1PhaseName.toUpperCase()} DETAILS`);
+                txtData.push(`- Average Accuracy: ${overallTest1Data.avgAccuracy}%`);
+                txtData.push(`- Average Speed: ${overallTest1Data.avgSpeed}s`);
+            } else {
+                txtData.push(`\n## ${test1PhaseName.toUpperCase()} DETAILS: No data recorded.`);
+            }
+
+            // --- TEST 2 (Transfer) DETAILS (Overall only) ---
+            const test2PhaseName = 'Test 2 (Transfer)';
+            if (test2Results.length > 0) {
+                const overallTest2Data = calculateAverages(test2Results);
+                txtData.push(`\n## ${test2PhaseName.toUpperCase()} DETAILS`);
+                txtData.push(`- Average Accuracy: ${overallTest2Data.avgAccuracy}%`);
+                txtData.push(`- Average Speed: ${overallTest2Data.avgSpeed}s`);
+            } else {
+                txtData.push(`\n## ${test2PhaseName.toUpperCase()} DETAILS: No data recorded.`);
+            }
+
 
             // Create TXT content
             const txtContent = txtData.join('\n');
