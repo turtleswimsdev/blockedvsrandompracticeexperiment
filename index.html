@@ -112,8 +112,7 @@
         let isActive = false;
         let trialIndex = 0;
         let results = [];
-        // Updated practiceType names
-        let practiceType = null; // Stores 'Practice 1' or 'Practice 2'
+        let practiceType = null; 
 
         tiles.forEach(t=>{ t.addEventListener('keydown',(e)=>{ if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); t.click(); } }); });
 
@@ -212,7 +211,9 @@
             if(mode === 'blocked' || mode === 'random'){
                 if(trialIndex >= practiceQueue.length){
                     updateStatus('Practice complete');
-                    blockedBtn.disabled = false; randomBtn.disabled = false;
+                    // Keep practice buttons disabled permanently after one is chosen
+                    // blockedBtn.disabled = false; 
+                    // randomBtn.disabled = false;
                     test1Btn.disabled = false; test2Btn.disabled = false;
                     mode = 'idle'; setTilesDisabled(true);
                     return;
@@ -227,10 +228,18 @@
                 if(trialIndex >= practiceQueue.length){ 
                     updateStatus('Test complete');
                     setTilesDisabled(true); 
-                    blockedBtn.disabled = false; 
-                    randomBtn.disabled = false;
-                    test1Btn.disabled = false; 
-                    test2Btn.disabled = false;
+                    
+                    // CRITICAL CHANGE: Disable the specific test button permanently
+                    if(mode === 'test1') { test1Btn.disabled = true; }
+                    if(mode === 'test2') { test2Btn.disabled = true; }
+
+                    // Only enable the other test if it hasn't been run yet (though they are run sequentially)
+                    if(mode === 'test1') { test2Btn.disabled = false; }
+                    
+                    // Keep practice buttons disabled
+                    // blockedBtn.disabled = false; 
+                    // randomBtn.disabled = false;
+
                     mode='idle';
                     return; 
                 }
@@ -257,26 +266,44 @@
 
         async function startBlocked(){
             mode='blocked';
-            practiceType = 'Practice 1'; // Updated name
-            blockedBtn.disabled = true; randomBtn.disabled = true; test1Btn.disabled = true; test2Btn.disabled = true;
+            practiceType = 'Practice 1'; 
+            // CRITICAL CHANGE: Disable BOTH practice buttons
+            blockedBtn.disabled = true; 
+            randomBtn.disabled = true; 
+            test1Btn.disabled = true; test2Btn.disabled = true;
             practiceQueue = buildBlockedQueue(); trialIndex=0; updateStatus('Practice 1 started'); await nextTrial();
         }
         async function startRandom(){
             mode='random';
-            practiceType = 'Practice 2'; // Updated name
-            blockedBtn.disabled=true; randomBtn.disabled=true; test1Btn.disabled=true; test2Btn.disabled=true;
+            practiceType = 'Practice 2'; 
+            // CRITICAL CHANGE: Disable BOTH practice buttons
+            blockedBtn.disabled = true; 
+            randomBtn.disabled = true; 
+            test1Btn.disabled = true; test2Btn.disabled = true;
             practiceQueue = buildRandomQueue(); trialIndex=0; updateStatus('Practice 2 started'); await nextTrial();
         }
 
         function startTest(which){
-            blockedBtn.disabled=true; randomBtn.disabled=true; test1Btn.disabled=true; test2Btn.disabled=true;
-            if(which===1){ mode='test1'; practiceQueue = learningOrder.slice(); trialIndex=0; updateStatus('Test 1 started'); nextTrial(); }
-            else { mode='test2'; practiceQueue = ['red','yellow','blue','green']; trialIndex=0; updateStatus('Test 2 started'); nextTrial(); }
+            // Keep practice buttons disabled
+            // blockedBtn.disabled=true; 
+            // randomBtn.disabled=true; 
+            test1Btn.disabled=true; 
+            test2Btn.disabled=true;
+
+            if(which===1){ 
+                mode='test1'; practiceQueue = learningOrder.slice(); trialIndex=0; updateStatus('Test 1 started'); nextTrial(); 
+            } else { 
+                mode='test2'; practiceQueue = ['red','yellow','blue','green']; trialIndex=0; updateStatus('Test 2 started'); nextTrial(); 
+            }
         }
 
         window.resetGame = ()=>{
             mode='idle'; practiceQueue=[]; currentPatternKey=null; clickBuffer=[]; trialIndex=0; setTilesDisabled(true);
-            test1Btn.disabled = false; test2Btn.disabled = false; blockedBtn.disabled=false; randomBtn.disabled=false; 
+            // Reset state of all buttons
+            test1Btn.disabled = false; 
+            test2Btn.disabled = false; 
+            blockedBtn.disabled=false; 
+            randomBtn.disabled=false; 
             updateStatus('Ready'); lastSummary.textContent='-';
         };
         document.addEventListener('DOMContentLoaded', ()=>{ window.resetGame(); });
@@ -306,7 +333,6 @@
             const test1Results = results.filter(r => r.phase === 'test1');
             const test2Results = results.filter(r => r.phase === 'test2');
             
-            // Determine practice mode based on the practiceType variable set during startBlocked/startRandom
             const practiceMode = practiceType || (practiceResults.length > 0 ? (practiceResults[0].phase === 'blocked' ? 'Practice 1' : 'Practice 2') : 'N/A');
 
             let txtData = [];
@@ -320,7 +346,7 @@
             
             // --- PRACTICE DETAILS (Averaged by 10 rounds) ---
             
-            const practicePhaseName = practiceMode; // Use the stored practice name
+            const practicePhaseName = practiceMode; 
             if (practiceResults.length > 0) {
                 txtData.push(`\n## ${practicePhaseName.toUpperCase()} DETAILS (Total Trials: ${practiceResults.length})`);
 
