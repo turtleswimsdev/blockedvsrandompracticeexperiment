@@ -124,29 +124,24 @@
 
         function setTilesDisabled(disabled){ tiles.forEach(t=>{ t.classList.toggle('disabled', disabled); t.disabled = disabled; }); }
 
+        // MODIFIED: Function now sets a persistent background color instead of flashing tiles
         async function flashSequence(patternKey, showPattern=true){
             return new Promise(async (resolve)=>{
                 isDuringCue = true; setTilesDisabled(true);
                 const pat = PATTERNS[patternKey];
                 updateStatus(mode.toUpperCase(), pat.name, `${trialIndex+1}/${practiceQueue.length || 0}`);
 
+                // CRITICAL CHANGE 1: Set the background color persistently
                 document.body.style.transition = 'background-color 0.2s';
                 document.body.style.backgroundColor = pat.colorClass.includes('blue')? '#3b82f6' : pat.colorClass.includes('green')? '#22c55e' : pat.colorClass.includes('red')? '#ef4444' : '#facc15';
-                await delay(600);
-                document.body.style.backgroundColor = '#f3f7fb';
-                await delay(300);
+                
+                await delay(300); 
 
                 if(showPattern){
-                    for(const b of pat.sequence){
-                        const el = document.querySelector(`.tile-${b}`);
-                        el.classList.add(pat.colorClass);
-                        el.style.color = '#fff';
-                        await delay(500); 
-                        el.classList.remove(pat.colorClass);
-                        el.style.color = '';
-                        await delay(200);
-                    }
+                    // This replaces the old flashing sequence logic with a simple required pause
+                    await delay(1200); 
                 }
+
                 isDuringCue = false; 
                 startTime = performance.now(); 
                 setTilesDisabled(false);
@@ -173,7 +168,8 @@
             if(isDuringCue || !isActive) return;
             const box = parseInt(t.dataset.box,10);
             
-            t.classList.add('opacity-80'); setTimeout(()=> t.classList.remove('opacity-80'),120);
+            // CRITICAL CHANGE 2: Tile turns gray and STAYS gray for the round
+            t.classList.add('bg-gray-200'); 
             clickBuffer.push(box);
 
             if(clickBuffer.length === currentExpectedSeq.length){
@@ -208,12 +204,13 @@
         }));
 
         async function nextTrial(){
+            // Reset background color and tile colors before the next trial starts
+            document.body.style.backgroundColor = '#f3f7fb';
+            tiles.forEach(t => t.classList.remove('bg-gray-200'));
+
             if(mode === 'blocked' || mode === 'random'){
                 if(trialIndex >= practiceQueue.length){
                     updateStatus('Practice complete');
-                    // Keep practice buttons disabled permanently after one is chosen
-                    // blockedBtn.disabled = false; 
-                    // randomBtn.disabled = false;
                     test1Btn.disabled = false; test2Btn.disabled = false;
                     mode = 'idle'; setTilesDisabled(true);
                     return;
@@ -229,17 +226,11 @@
                     updateStatus('Test complete');
                     setTilesDisabled(true); 
                     
-                    // CRITICAL CHANGE: Disable the specific test button permanently
                     if(mode === 'test1') { test1Btn.disabled = true; }
                     if(mode === 'test2') { test2Btn.disabled = true; }
 
-                    // Only enable the other test if it hasn't been run yet (though they are run sequentially)
                     if(mode === 'test1') { test2Btn.disabled = false; }
                     
-                    // Keep practice buttons disabled
-                    // blockedBtn.disabled = false; 
-                    // randomBtn.disabled = false;
-
                     mode='idle';
                     return; 
                 }
@@ -267,7 +258,6 @@
         async function startBlocked(){
             mode='blocked';
             practiceType = 'Practice 1'; 
-            // CRITICAL CHANGE: Disable BOTH practice buttons
             blockedBtn.disabled = true; 
             randomBtn.disabled = true; 
             test1Btn.disabled = true; test2Btn.disabled = true;
@@ -276,7 +266,6 @@
         async function startRandom(){
             mode='random';
             practiceType = 'Practice 2'; 
-            // CRITICAL CHANGE: Disable BOTH practice buttons
             blockedBtn.disabled = true; 
             randomBtn.disabled = true; 
             test1Btn.disabled = true; test2Btn.disabled = true;
@@ -284,9 +273,6 @@
         }
 
         function startTest(which){
-            // Keep practice buttons disabled
-            // blockedBtn.disabled=true; 
-            // randomBtn.disabled=true; 
             test1Btn.disabled=true; 
             test2Btn.disabled=true;
 
@@ -299,7 +285,6 @@
 
         window.resetGame = ()=>{
             mode='idle'; practiceQueue=[]; currentPatternKey=null; clickBuffer=[]; trialIndex=0; setTilesDisabled(true);
-            // Reset state of all buttons
             test1Btn.disabled = false; 
             test2Btn.disabled = false; 
             blockedBtn.disabled=false; 
