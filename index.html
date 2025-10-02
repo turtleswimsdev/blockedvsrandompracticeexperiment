@@ -1,217 +1,290 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Motor Skill Acquisition — Blocked & Random Practice</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    html,body,#app{height:100%;margin:0}
-    body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial;background:#f3f7fb}
-    .game-grid{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:0.75rem;padding:0.75rem;height:calc(100vh - 136px)}
-    .tile{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:2.25rem;border-radius:12px;background:#fff;border:3px solid #cbd5e1;user-select:none}
-    .tile:focus{outline:3px solid #60a5fa}
-    .disabled{pointer-events:none;opacity:0.75}
-    .status{height:72px;padding:0.75rem}
-    @keyframes flash {0%{opacity:0.15}50%{opacity:1}100%{opacity:0.15}}
-    .flashing{animation:flash 300ms ease-in-out infinite}
-  </style>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Motor Skill Acquisition — Blocked & Random Practice</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        html,body,#app{height:100%;margin:0}
+        body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial;background:#f3f7fb}
+        .game-grid{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:0.75rem;padding:0.75rem;height:calc(100vh - 136px)}
+        .tile{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:2.25rem;border-radius:12px;background:#fff;border:3px solid #cbd5e1;user-select:none}
+        .tile:focus{outline:3px solid #60a5fa}
+        .disabled{pointer-events:none;opacity:0.75}
+        .status{height:72px;padding:0.75rem}
+        @keyframes flash {0%{opacity:0.15}50%{opacity:1}100%{opacity:0.15}}
+        .flashing{animation:flash 300ms ease-in-out infinite}
+    </style>
 </head>
 <body>
-  <div class="status bg-white border-b border-gray-200 flex items-center justify-between px-4">
-    <div>
-      <div class="text-sm text-gray-600">Motor Skill Acquisition — Blocked vs Random</div>
-      <div id="phase" class="text-lg font-semibold">Ready</div>
+    <div class="status bg-white border-b border-gray-200 flex items-center justify-between px-4">
+        <div>
+            <div class="text-sm text-gray-600">Motor Skill Acquisition — Blocked vs Random</div>
+            <div id="phase" class="text-lg font-semibold">Ready</div>
+        </div>
+        <div class="text-center">
+            <div id="cue-indicator" class="text-sm">Cue: -</div>
+            <div id="trial-display" class="text-xs text-gray-500">Trial 0/0</div>
+        </div>
+        <div class="flex items-center gap-3">
+            <div id="user-id" class="text-xs text-gray-500">User: Anonymous</div>
+            <button id="download-btn" class="px-3 py-1 bg-gray-400 text-white rounded" onclick="window.downloadResults()">Download CSV</button>
+        </div>
     </div>
-    <div class="text-center">
-      <div id="cue-indicator" class="text-sm">Cue: -</div>
-      <div id="trial-display" class="text-xs text-gray-500">Trial 0/0</div>
+
+    <div class="p-3 bg-white flex gap-3 items-center">
+        <button id="blocked-btn" class="px-4 py-2 bg-indigo-600 text-white rounded shadow" onclick="startBlocked()">Blocked Practice</button>
+        <button id="random-btn" class="px-4 py-2 bg-sky-600 text-white rounded shadow" onclick="startRandom()">Random Practice</button>
+        <button id="test1-btn" class="px-4 py-2 bg-purple-600 text-white rounded shadow" onclick="startTest(1)">Test 1 (Retention)</button>
+        <button id="test2-btn" class="px-4 py-2 bg-pink-600 text-white rounded shadow" onclick="startTest(2)">Test 2 (Transfer)</button>
+        <div class="ml-auto text-sm text-gray-700">Last Trial: <span id="last-summary">-</span></div>
     </div>
-    <div class="flex items-center gap-3">
-      <div id="user-id" class="text-xs text-gray-500">User: Anonymous</div>
-      <button id="download-btn" class="px-3 py-1 bg-gray-400 text-white rounded" onclick="window.downloadResults()">Download CSV</button>
-    </div>
-  </div>
 
-  <div class="p-3 bg-white flex gap-3 items-center">
-    <button id="blocked-btn" class="px-4 py-2 bg-indigo-600 text-white rounded shadow" onclick="startBlocked()">Blocked Practice</button>
-    <button id="random-btn" class="px-4 py-2 bg-sky-600 text-white rounded shadow" onclick="startRandom()">Random Practice</button>
-    <button id="test1-btn" class="px-4 py-2 bg-purple-600 text-white rounded shadow" onclick="startTest(1)" disabled>Test 1 (Retention)</button>
-    <button id="test2-btn" class="px-4 py-2 bg-pink-600 text-white rounded shadow" onclick="startTest(2)" disabled>Test 2 (Transfer)</button>
-    <div class="ml-auto text-sm text-gray-700">Last Trial: <span id="last-summary">-</span></div>
-  </div>
+    <main id="app">
+        <div id="grid" class="game-grid" role="application" aria-label="6 button grid">
+            <button class="tile tile-1" data-box="1" aria-label="box 1">1</button>
+            <button class="tile tile-2" data-box="2" aria-label="box 2">2</button>
+            <button class="tile tile-3" data-box="3" aria-label="box 3">3</button>
+            <button class="tile tile-4" data-box="4" aria-label="box 4">4</button>
+            <button class="tile tile-5" data-box="5" aria-label="box 5">5</button>
+            <button class="tile tile-6" data-box="6" aria-label="box 6">6</button>
+        </div>
+    </main>
 
-  <main id="app">
-    <div id="grid" class="game-grid" role="application" aria-label="6 button grid">
-      <button class="tile tile-1" data-box="1" aria-label="box 1">1</button>
-      <button class="tile tile-2" data-box="2" aria-label="box 2">2</button>
-      <button class="tile tile-3" data-box="3" aria-label="box 3">3</button>
-      <button class="tile tile-4" data-box="4" aria-label="box 4">4</button>
-      <button class="tile tile-5" data-box="5" aria-label="box 5">5</button>
-      <button class="tile tile-6" data-box="6" aria-label="box 6">6</button>
-    </div>
-  </main>
+    <script>
+        const PATTERNS = {
+            blue: { sequence: [3,6,4], colorClass: 'bg-blue-500', name:'BLUE' },
+            green: { sequence: [2,5,1], colorClass: 'bg-green-500', name:'GREEN' },
+            red: { sequence: [5,3,6], colorClass: 'bg-red-500', name:'RED' },
+            yellow: { sequence: [3,4,1], colorClass: 'bg-yellow-400', name:'YELLOW' }
+        };
 
-  <script>
-    const PATTERNS = {
-      blue: { sequence: [3,6,4], colorClass: 'bg-blue-500', name:'BLUE' },
-      green: { sequence: [2,5,1], colorClass: 'bg-green-500', name:'GREEN' },
-      red: { sequence: [5,3,6], colorClass: 'bg-red-500', name:'RED' },
-      yellow: { sequence: [3,4,1], colorClass: 'bg-yellow-400', name:'YELLOW' }
-    };
+        const TRIALS_PER_BLOCK = 15; 
+        const TEST_PAUSE_MS = 5000; 
 
-    const TRIALS_PER_BLOCK = 15; 
-    const TEST_PAUSE_MS = 5000; 
+        const tiles = Array.from(document.querySelectorAll('.tile'));
+        const phaseEl = document.getElementById('phase');
+        const cueEl = document.getElementById('cue-indicator');
+        const trialDisplay = document.getElementById('trial-display');
+        const lastSummary = document.getElementById('last-summary');
+        const test1Btn = document.getElementById('test1-btn');
+        const test2Btn = document.getElementById('test2-btn');
+        const blockedBtn = document.getElementById('blocked-btn');
+        const randomBtn = document.getElementById('random-btn');
 
-    const tiles = Array.from(document.querySelectorAll('.tile'));
-    const phaseEl = document.getElementById('phase');
-    const cueEl = document.getElementById('cue-indicator');
-    const trialDisplay = document.getElementById('trial-display');
-    const lastSummary = document.getElementById('last-summary');
-    const test1Btn = document.getElementById('test1-btn');
-    const test2Btn = document.getElementById('test2-btn');
-    const blockedBtn = document.getElementById('blocked-btn');
-    const randomBtn = document.getElementById('random-btn');
+        let mode = 'idle';
+        let learningOrder = ['blue','green','red','yellow'];
+        let practiceQueue = [];
+        let currentPatternKey = null;
+        let currentExpectedSeq = [];
+        let clickBuffer = [];
+        let startTime = null;
+        let isDuringCue = false;
+        let isActive = false;
+        let trialIndex = 0;
+        let results = [];
+        let practiceType = null; // Store which practice type was used
 
-    let mode = 'idle';
-    let learningOrder = ['blue','green','red','yellow'];
-    let practiceQueue = [];
-    let currentPatternKey = null;
-    let currentExpectedSeq = [];
-    let clickBuffer = [];
-    let startTime = null;
-    let isDuringCue = false;
-    let isActive = false;
-    let trialIndex = 0;
-    let results = [];
+        tiles.forEach(t=>{ t.addEventListener('keydown',(e)=>{ if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); t.click(); } }); });
 
-    tiles.forEach(t=>{ t.addEventListener('keydown',(e)=>{ if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); t.click(); } }); });
-
-    function updateStatus(phaseText, cueText='', trialText=''){
-      phaseEl.textContent = phaseText;
-      cueEl.textContent = cueText?`Cue: ${cueText}`:'Cue: -';
-      if(trialText) trialDisplay.textContent = trialText;
-    }
-
-    function setTilesDisabled(disabled){ tiles.forEach(t=>{ t.classList.toggle('disabled', disabled); t.disabled = disabled; }); }
-
-    async function flashSequence(patternKey, showPattern=true){
-      return new Promise(async (resolve)=>{
-        isDuringCue = true; setTilesDisabled(true);
-        const pat = PATTERNS[patternKey];
-        updateStatus(mode.toUpperCase(), pat.name, `${trialIndex+1}/${practiceQueue.length || 0}`);
-
-        document.body.style.transition = 'background-color 0.2s';
-        document.body.style.backgroundColor = pat.colorClass.includes('blue')? '#3b82f6' : pat.colorClass.includes('green')? '#22c55e' : pat.colorClass.includes('red')? '#ef4444' : '#facc15';
-        await delay(600);
-        document.body.style.backgroundColor = '#f3f7fb';
-        await delay(300);
-
-        if(showPattern){
-          for(const b of pat.sequence){
-            const el = document.querySelector(`.tile-${b}`);
-            el.classList.add(pat.colorClass);
-            el.style.color = '#fff';
-            await delay(500); 
-            el.classList.remove(pat.colorClass);
-            el.style.color = '';
-            await delay(200);
-          }
+        function updateStatus(phaseText, cueText='', trialText=''){
+            phaseEl.textContent = phaseText;
+            cueEl.textContent = cueText?`Cue: ${cueText}`:'Cue: -';
+            if(trialText) trialDisplay.textContent = trialText;
         }
-        isDuringCue = false; setTilesDisabled(false);
-        resolve();
-      });
-    }
 
-    function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
+        function setTilesDisabled(disabled){ tiles.forEach(t=>{ t.classList.toggle('disabled', disabled); t.disabled = disabled; }); }
 
-    function resetTrialVars(){ clickBuffer = []; startTime = null; }
+        async function flashSequence(patternKey, showPattern=true){
+            return new Promise(async (resolve)=>{
+                isDuringCue = true; setTilesDisabled(true);
+                const pat = PATTERNS[patternKey];
+                updateStatus(mode.toUpperCase(), pat.name, `${trialIndex+1}/${practiceQueue.length || 0}`);
 
-    tiles.forEach(t=> t.addEventListener('click', async ()=>{
-      if(isDuringCue || !isActive) return;
-      const box = parseInt(t.dataset.box,10);
-      if(!startTime) startTime = performance.now();
-      t.classList.add('opacity-80'); setTimeout(()=> t.classList.remove('opacity-80'),120);
-      clickBuffer.push(box);
+                document.body.style.transition = 'background-color 0.2s';
+                document.body.style.backgroundColor = pat.colorClass.includes('blue')? '#3b82f6' : pat.colorClass.includes('green')? '#22c55e' : pat.colorClass.includes('red')? '#ef4444' : '#facc15';
+                await delay(600);
+                document.body.style.backgroundColor = '#f3f7fb';
+                await delay(300);
 
-      if(clickBuffer.length === currentExpectedSeq.length){
-        const rt = (performance.now() - startTime)/1000;
-        isActive = false; setTilesDisabled(true);
-        let correct = 0; for(let i=0;i<currentExpectedSeq.length;i++){ if(clickBuffer[i] === currentExpectedSeq[i]) correct++; }
-        const score = correct / currentExpectedSeq.length;
-        const result = { phase: mode, trialNumber: trialIndex+1, pattern: currentPatternKey, expected: currentExpectedSeq, actual: clickBuffer, reactionTime_s: parseFloat(rt.toFixed(3)), correct: correct, score: score };
-        lastSummary.textContent = `${result.pattern.toUpperCase()}: ${result.correct}/${currentExpectedSeq.length}, ${result.reactionTime_s}s`;
-        results.push(result);
-        if(mode === 'test1'){ updateStatus('Waiting before next cue...', '', `${trialIndex+1}/${practiceQueue.length}`); await delay(TEST_PAUSE_MS); }
-        trialIndex++;
-        await nextTrial();
-      }
-    }));
-
-    async function nextTrial(){
-      if(mode === 'blocked' || mode === 'random'){
-        if(trialIndex >= practiceQueue.length){
-          updateStatus('Practice complete');
-          test1Btn.disabled = false; blockedBtn.disabled = false; randomBtn.disabled = false;
-          mode = 'idle'; setTilesDisabled(true);
-          return;
+                if(showPattern){
+                    for(const b of pat.sequence){
+                        const el = document.querySelector(`.tile-${b}`);
+                        el.classList.add(pat.colorClass);
+                        el.style.color = '#fff';
+                        await delay(500); 
+                        el.classList.remove(pat.colorClass);
+                        el.style.color = '';
+                        await delay(200);
+                    }
+                }
+                isDuringCue = false; setTilesDisabled(false);
+                resolve();
+            });
         }
-        currentPatternKey = practiceQueue[trialIndex];
-        currentExpectedSeq = PATTERNS[currentPatternKey].sequence.slice();
-        await flashSequence(currentPatternKey, true);
-        resetTrialVars(); isActive = true; setTilesDisabled(false);
-      }else if(mode === 'test1' || mode === 'test2'){
-        if(trialIndex >= practiceQueue.length){ 
-          updateStatus('Test complete');
-          setTilesDisabled(true); 
-          if(mode==='test1'){ test2Btn.disabled = false; }
-          mode='idle'; blockedBtn.disabled = false; randomBtn.disabled = false; 
-          return; 
+
+        function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+        function resetTrialVars(){ clickBuffer = []; startTime = null; }
+
+        tiles.forEach(t=> t.addEventListener('click', async ()=>{
+            if(isDuringCue || !isActive) return;
+            const box = parseInt(t.dataset.box,10);
+            if(!startTime) startTime = performance.now();
+            t.classList.add('opacity-80'); setTimeout(()=> t.classList.remove('opacity-80'),120);
+            clickBuffer.push(box);
+
+            if(clickBuffer.length === currentExpectedSeq.length){
+                const rt = (performance.now() - startTime)/1000;
+                isActive = false; setTilesDisabled(true);
+                let correct = 0; for(let i=0;i<currentExpectedSeq.length;i++){ if(clickBuffer[i] === currentExpectedSeq[i]) correct++; }
+                const score = correct / currentExpectedSeq.length;
+                const result = { phase: mode, trialNumber: trialIndex+1, pattern: currentPatternKey, expected: currentExpectedSeq, actual: clickBuffer, reactionTime_s: parseFloat(rt.toFixed(3)), correct: correct, score: score };
+                lastSummary.textContent = `${result.pattern.toUpperCase()}: ${result.correct}/${currentExpectedSeq.length}, ${result.reactionTime_s}s`;
+                results.push(result);
+                if(mode === 'test1'){ updateStatus('Waiting before next cue...', '', `${trialIndex+1}/${practiceQueue.length}`); await delay(TEST_PAUSE_MS); }
+                trialIndex++;
+                await nextTrial();
+            }
+        }));
+
+        async function nextTrial(){
+            if(mode === 'blocked' || mode === 'random'){
+                if(trialIndex >= practiceQueue.length){
+                    updateStatus('Practice complete');
+                    // Removed button re-enabling logic here since they are enabled by default now.
+                    mode = 'idle'; setTilesDisabled(true);
+                    return;
+                }
+                currentPatternKey = practiceQueue[trialIndex];
+                currentExpectedSeq = PATTERNS[currentPatternKey].sequence.slice();
+                await flashSequence(currentPatternKey, true);
+                resetTrialVars(); isActive = true; setTilesDisabled(false);
+            }else if(mode === 'test1' || mode === 'test2'){
+                if(trialIndex >= practiceQueue.length){ 
+                    updateStatus('Test complete');
+                    setTilesDisabled(true); 
+                    // Removed button re-enabling logic here
+                    mode='idle';
+                    return; 
+                }
+                currentPatternKey = practiceQueue[trialIndex];
+                currentExpectedSeq = PATTERNS[currentPatternKey].sequence.slice();
+                await flashSequence(currentPatternKey, false);
+                resetTrialVars(); isActive = true; setTilesDisabled(false);
+            }
         }
-        currentPatternKey = practiceQueue[trialIndex];
-        currentExpectedSeq = PATTERNS[currentPatternKey].sequence.slice();
-        await flashSequence(currentPatternKey, false);
-        resetTrialVars(); isActive = true; setTilesDisabled(false);
-      }
-    }
 
-    function buildBlockedQueue(){ const q=[]; for(const p of learningOrder){ for(let i=0;i<TRIALS_PER_BLOCK;i++) q.push(p); } return q; }
-    function buildRandomQueue(){
-      const q=[]; 
-      for(const p of Object.keys(PATTERNS)){
-        for(let i=0;i<TRIALS_PER_BLOCK;i++) q.push(p);
-      }
-      let seed = 12345;
-      function seededRandom(){ seed = (seed * 16807) % 2147483647; return (seed-1)/2147483646; }
-      for(let i=q.length-1;i>0;i--){ const j = Math.floor(seededRandom()* (i+1)); [q[i],q[j]]=[q[j],q[i]]; }
-      return q; 
-    }
+        function buildBlockedQueue(){ const q=[]; for(const p of learningOrder){ for(let i=0;i<TRIALS_PER_BLOCK;i++) q.push(p); } return q; }
+        function buildRandomQueue(){
+            const q=[]; 
+            for(const p of Object.keys(PATTERNS)){
+                for(let i=0;i<TRIALS_PER_BLOCK;i++) q.push(p);
+            }
+            let seed = 12345;
+            function seededRandom(){ seed = (seed * 16807) % 2147483647; return (seed-1)/2147483646; }
+            for(let i=q.length-1;i>0;i--){ const j = Math.floor(seededRandom()* (i+1)); [q[i],q[j]]=[q[j],q[i]]; }
+            return q; 
+        }
 
-    async function startBlocked(){ mode='blocked'; blockedBtn.disabled = true; randomBtn.disabled = true; test1Btn.disabled = true; test2Btn.disabled = true; practiceQueue = buildBlockedQueue(); trialIndex=0; updateStatus('Blocked practice started'); await nextTrial(); }
-    async function startRandom(){ mode='random'; blockedBtn.disabled=true; randomBtn.disabled=true; test1Btn.disabled=true; test2Btn.disabled=true; practiceQueue = buildRandomQueue(); trialIndex=0; updateStatus('Random practice started'); await nextTrial(); }
+        async function startBlocked(){
+            mode='blocked';
+            practiceType = 'Blocked'; // Store practice type
+            blockedBtn.disabled = true; randomBtn.disabled = true; test1Btn.disabled = true; test2Btn.disabled = true;
+            practiceQueue = buildBlockedQueue(); trialIndex=0; updateStatus('Blocked practice started'); await nextTrial();
+        }
+        async function startRandom(){
+            mode='random';
+            practiceType = 'Random'; // Store practice type
+            blockedBtn.disabled=true; randomBtn.disabled=true; test1Btn.disabled=true; test2Btn.disabled=true;
+            practiceQueue = buildRandomQueue(); trialIndex=0; updateStatus('Random practice started'); await nextTrial();
+        }
 
-    function startTest(which){
-      blockedBtn.disabled=true; randomBtn.disabled=true; test1Btn.disabled=true; test2Btn.disabled=true;
-      if(which===1){ mode='test1'; practiceQueue = learningOrder.slice(); trialIndex=0; updateStatus('Test 1 (Retention) started'); nextTrial(); }
-      else { mode='test2'; practiceQueue = ['red','yellow','blue','green']; trialIndex=0; updateStatus('Test 2 (Transfer) started'); nextTrial(); }
-    }
+        function startTest(which){
+            blockedBtn.disabled=true; randomBtn.disabled=true; test1Btn.disabled=true; test2Btn.disabled=true;
+            if(which===1){ mode='test1'; practiceQueue = learningOrder.slice(); trialIndex=0; updateStatus('Test 1 (Retention) started'); nextTrial(); }
+            else { mode='test2'; practiceQueue = ['red','yellow','blue','green']; trialIndex=0; updateStatus('Test 2 (Transfer) started'); nextTrial(); }
+        }
 
-    window.resetGame = ()=>{ mode='idle'; practiceQueue=[]; currentPatternKey=null; clickBuffer=[]; trialIndex=0; setTilesDisabled(true); test1Btn.disabled = true; test2Btn.disabled = true; blockedBtn.disabled=false; randomBtn.disabled=false; updateStatus('Ready'); lastSummary.textContent='-'; };
-    document.addEventListener('DOMContentLoaded', ()=>{ window.resetGame(); });
+        window.resetGame = ()=>{
+            mode='idle'; practiceQueue=[]; currentPatternKey=null; clickBuffer=[]; trialIndex=0; setTilesDisabled(true);
+            test1Btn.disabled = false; test2Btn.disabled = false; blockedBtn.disabled=false; randomBtn.disabled=false; // Ensure buttons are enabled on reset
+            updateStatus('Ready'); lastSummary.textContent='-';
+        };
+        document.addEventListener('DOMContentLoaded', ()=>{ window.resetGame(); });
 
-    window.downloadResults = function(){
-      if(results.length === 0){ alert('No results to download.'); return; }
-      const headers = Object.keys(results[0]);
-      const rows = results.map(r => headers.map(h => JSON.stringify(r[h]??'')).join(","));
-      const csvContent = [headers.join(","), ...rows].join("\n");
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'results.csv';
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-  </script>
+        // Helper function to calculate averages
+        function calculateAverages(data) {
+            if (data.length === 0) return { avgAccuracy: 0, avgSpeed: 0 };
+            const totalAccuracy = data.reduce((sum, d) => sum + d.score, 0);
+            const totalSpeed = data.reduce((sum, d) => sum + d.reactionTime_s, 0);
+            return {
+                avgAccuracy: (totalAccuracy / data.length).toFixed(3),
+                avgSpeed: (totalSpeed / data.length).toFixed(3)
+            };
+        }
+
+        // --- NEW/MODIFIED CSV DOWNLOAD FUNCTION ---
+        window.downloadResults = function(){
+            if(results.length === 0){ alert('No results to download. Please complete at least one phase.'); return; }
+
+            const practiceResults = results.filter(r => r.phase === 'blocked' || r.phase === 'random');
+            const test1Results = results.filter(r => r.phase === 'test1');
+            const test2Results = results.filter(r => r.phase === 'test2');
+            
+            const practiceMode = practiceType || (practiceResults.length > 0 ? (practiceResults[0].phase === 'blocked' ? 'Blocked' : 'Random') : 'N/A');
+
+            let csvData = [];
+            
+            // 1. Practice Mode
+            csvData.push([`Practice_Type:${practiceMode}`].join(','));
+            
+            // Function to add phase data and averages
+            const addPhaseData = (phaseName, data) => {
+                // Round-by-round data
+                data.forEach((r, index) => {
+                    const row = [
+                        `${phaseName}_Round_${index + 1}`,
+                        r.correct,
+                        r.reactionTime_s
+                    ];
+                    csvData.push(row.join(','));
+                });
+                
+                // Overall averages
+                if (data.length > 0) {
+                    const { avgAccuracy, avgSpeed } = calculateAverages(data);
+                    csvData.push([
+                        `${phaseName}_Overall_Average_Accuracy`,
+                        avgAccuracy
+                    ].join(','));
+                    csvData.push([
+                        `${phaseName}_Overall_Average_Speed_s`,
+                        avgSpeed
+                    ].join(','));
+                }
+            };
+            
+            // 2. Practice Details
+            addPhaseData('Practice', practiceResults);
+            
+            // 3. Test 1 Details
+            addPhaseData('Test1', test1Results);
+
+            // 4. Test 2 Details
+            addPhaseData('Test2', test2Results);
+
+            // Create CSV content
+            const csvContent = csvData.map(row => row.includes(',') ? `"${row}"` : row).join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'motor_skill_results_formatted.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+    </script>
 </body>
 </html>
