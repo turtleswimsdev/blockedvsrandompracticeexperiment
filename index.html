@@ -15,6 +15,20 @@
         .status{height:72px;padding:0.75rem}
         @keyframes flash {0%{opacity:0.15}50%{opacity:1}100%{opacity:0.15}}
         .flashing{animation:flash 300ms ease-in-out infinite}
+        /* New Modal Styling */
+        .modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 100;
+        }
+        .modal-content {
+            background: white; padding: 20px; border-radius: 8px; max-width: 80%; max-height: 80%; overflow: auto;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .modal-content pre {
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -38,6 +52,8 @@
         <button id="random-btn" class="px-4 py-2 bg-sky-600 text-white rounded shadow" onclick="startRandom()">Random Practice</button>
         <button id="test1-btn" class="px-4 py-2 bg-purple-600 text-white rounded shadow" onclick="startTest(1)">Test 1 (Retention)</button>
         <button id="test2-btn" class="px-4 py-2 bg-pink-600 text-white rounded shadow" onclick="startTest(2)">Test 2 (Transfer)</button>
+        <button id="view-results-btn" class="px-4 py-2 bg-green-600 text-white rounded shadow" onclick="window.displayResults()">View Results</button>
+        
         <div class="ml-auto text-sm text-gray-700">Last Trial: <span id="last-summary">-</span></div>
     </div>
 
@@ -51,6 +67,14 @@
             <button class="tile tile-6" data-box="6" aria-label="box 6">6</button>
         </div>
     </main>
+    
+    <div id="results-modal" class="modal" onclick="this.style.display='none'">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h2 class="text-xl font-bold mb-3">Your Session Results</h2>
+            <pre id="results-display"></pre>
+            <button class="mt-4 px-4 py-2 bg-gray-500 text-white rounded" onclick="document.getElementById('results-modal').style.display='none'">Close</button>
+        </div>
+    </div>
 
     <script>
         const PATTERNS = {
@@ -73,6 +97,8 @@
         const test2Btn = document.getElementById('test2-btn');
         const blockedBtn = document.getElementById('blocked-btn');
         const randomBtn = document.getElementById('random-btn');
+        const resultsModal = document.getElementById('results-modal');
+        const resultsDisplay = document.getElementById('results-display');
 
         let mode = 'idle';
         let learningOrder = ['blue','green','red','yellow'];
@@ -129,7 +155,6 @@
 
         function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
         
-        // NEW FUNCTION for the countdown timer
         async function countdownDelay(ms) {
             let seconds = Math.floor(ms / 1000);
             const originalPhaseText = phaseEl.textContent;
@@ -138,7 +163,6 @@
                 phaseEl.textContent = `${originalPhaseText} (Next in ${i}s...)`;
                 await delay(1000);
             }
-            // phaseEl will be updated by nextTrial's flashSequence call
         }
 
 
@@ -170,15 +194,12 @@
                 lastSummary.textContent = `${result.pattern.toUpperCase()}: ${result.correct}/${currentExpectedSeq.length}, ${result.reactionTime_s}s`;
                 results.push(result);
                 
-                // CHECK IF THIS IS THE LAST TRIAL
                 const isLastTrial = (trialIndex + 1) >= practiceQueue.length;
 
                 if(mode === 'test1' && !isLastTrial){ 
-                    // Use countdownDelay only for Test 1 and if not the last trial
                     updateStatus('Waiting before next cue...', '', `${trialIndex+1}/${practiceQueue.length}`); 
                     await countdownDelay(TEST_PAUSE_MS); 
                 } 
-                // Note: Test 2 does not have an inter-trial pause
 
                 trialIndex++;
                 await nextTrial();
@@ -202,7 +223,6 @@
                 isActive = true; 
             }else if(mode === 'test1' || mode === 'test2'){
                 if(trialIndex >= practiceQueue.length){ 
-                    // Skip the last pause, just display 'Test complete'
                     updateStatus('Test complete');
                     setTilesDisabled(true); 
                     blockedBtn.disabled = false; 
@@ -276,9 +296,9 @@
             };
         }
 
-        // --- NEW/MODIFIED DOWNLOAD FUNCTION to TXT ---
-        window.downloadResults = function(){
-            if(results.length === 0){ alert('No results to download. Please complete at least one phase.'); return; }
+        // --- CORE FUNCTION TO GENERATE RESULTS TEXT ---
+        window.generateResultsText = function(){
+            if(results.length === 0){ return "No results recorded. Please complete a practice or test phase first."; }
 
             const practiceResults = results.filter(r => r.phase === 'blocked' || r.phase === 'random');
             const test1Results = results.filter(r => r.phase === 'test1');
@@ -344,9 +364,17 @@
                 txtData.push(`\n## ${test2PhaseName.toUpperCase()} DETAILS: No data recorded.`);
             }
 
+            return txtData.join('\n');
+        }
 
-            // Create TXT content
-            const txtContent = txtData.join('\n');
+        // --- DOWNLOAD FUNCTION (Calls generator) ---
+        window.downloadResults = function(){
+            const txtContent = window.generateResultsText();
+            if(txtContent.includes("No results recorded")){
+                alert('No results to download. Please complete a practice or test phase first.');
+                return;
+            }
+            
             const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -354,6 +382,14 @@
             a.download = 'motor_skill_results.txt';
             a.click();
             URL.revokeObjectURL(url);
+        }
+        
+        // --- DISPLAY FUNCTION (Calls generator and shows modal) ---
+        window.displayResults = function(){
+            const txtContent = window.generateResultsText();
+
+            resultsDisplay.textContent = txtContent;
+            resultsModal.style.display = 'flex'; // Show the modal
         }
     </script>
 </body>
