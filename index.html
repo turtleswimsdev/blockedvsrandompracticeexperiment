@@ -153,7 +153,8 @@
             if(mode === 'blocked' || mode === 'random'){
                 if(trialIndex >= practiceQueue.length){
                     updateStatus('Practice complete');
-                    // Removed button re-enabling logic here since they are enabled by default now.
+                    blockedBtn.disabled = false; randomBtn.disabled = false;
+                    test1Btn.disabled = false; test2Btn.disabled = false;
                     mode = 'idle'; setTilesDisabled(true);
                     return;
                 }
@@ -165,7 +166,11 @@
                 if(trialIndex >= practiceQueue.length){ 
                     updateStatus('Test complete');
                     setTilesDisabled(true); 
-                    // Removed button re-enabling logic here
+                    // Re-enable all main buttons
+                    blockedBtn.disabled = false; 
+                    randomBtn.disabled = false;
+                    test1Btn.disabled = false; 
+                    test2Btn.disabled = false;
                     mode='idle';
                     return; 
                 }
@@ -209,7 +214,7 @@
 
         window.resetGame = ()=>{
             mode='idle'; practiceQueue=[]; currentPatternKey=null; clickBuffer=[]; trialIndex=0; setTilesDisabled(true);
-            test1Btn.disabled = false; test2Btn.disabled = false; blockedBtn.disabled=false; randomBtn.disabled=false; // Ensure buttons are enabled on reset
+            test1Btn.disabled = false; test2Btn.disabled = false; blockedBtn.disabled=false; randomBtn.disabled=false; 
             updateStatus('Ready'); lastSummary.textContent='-';
         };
         document.addEventListener('DOMContentLoaded', ()=>{ window.resetGame(); });
