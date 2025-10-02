@@ -9,16 +9,16 @@
         html,body,#app{height:100%;margin:0}
         body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial;background:#f3f7fb}
         .game-grid{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:0.75rem;padding:0.75rem;height:calc(100vh - 136px)}
-        .tile{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:2.25rem;border-radius:12px;background:#fff;border:3px solid #cbd5e1;user-select:none; transition: border-color 0.1s;} /* Added transition for smooth effect */
+        .tile{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:2.25rem;border-radius:12px;background:#fff;border:3px solid #cbd5e1;user-select:none; transition: border-color 0.1s;}
         .tile:focus{outline:3px solid #60a5fa}
         .disabled{pointer-events:none;opacity:0.75}
         .status{height:72px;padding:0.75rem}
         @keyframes flash {0%{opacity:0.15}50%{opacity:1}100%{opacity:0.15}}
         .flashing{animation:flash 300ms ease-in-out infinite}
-        /* NEW STYLE: Border to show the button has been pressed */
+        /* UPDATED STYLE: Simple gray border on click */
         .pressed-tile {
-            border-color: #f59e0b; /* Tailwind amber-500 for high visibility */
-            box-shadow: 0 0 10px rgba(245, 158, 11, 0.6);
+            border-color: #9ca3af; /* Tailwind gray-400 */
+            box-shadow: none;
         }
         /* Modal Styling */
         .modal {
@@ -26,7 +26,7 @@
             background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 100;
         }
         .modal-content {
-            background: white; padding: 20px; border-radius: 8px; max-width: 80%; max-height: 80%; overflow: auto;
+            background: white; padding: 20px; border-radius: 8px; max-width: 90%; width: 500px; max-height: 80%; overflow: auto;
             box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
         .modal-content pre {
@@ -74,6 +74,15 @@
         </div>
     </main>
     
+    <div id="instruction-modal" class="modal" onclick="this.style.display='none'">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h2 id="instruction-title" class="text-xl font-bold mb-3">Phase Instructions</h2>
+            <p id="instruction-text" class="mb-4 text-gray-700">Detailed instructions go here.</p>
+            <button id="instruction-start-btn" class="mt-4 px-4 py-2 bg-indigo-600 text-white rounded" onclick="window.instructionStartAction()">Start</button>
+            <button class="mt-4 px-4 py-2 bg-gray-500 text-white rounded" onclick="document.getElementById('instruction-modal').style.display='none'">Cancel</button>
+        </div>
+    </div>
+
     <div id="results-modal" class="modal" onclick="this.style.display='none'">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h2 class="text-xl font-bold mb-3">Your Session Results</h2>
@@ -105,7 +114,17 @@
         const randomBtn = document.getElementById('random-btn');
         const resultsModal = document.getElementById('results-modal');
         const resultsDisplay = document.getElementById('results-display');
+        
+        // Instruction Modal elements
+        const instructionModal = document.getElementById('instruction-modal');
+        const instructionTitle = document.getElementById('instruction-title');
+        const instructionText = document.getElementById('instruction-text');
 
+        // Variables to store pending phase details
+        let pendingMode = 'idle';
+        let pendingQueue = [];
+        let pendingPracticeType = null;
+        
         let mode = 'idle';
         let learningOrder = ['blue','green','red','yellow'];
         let practiceQueue = [];
@@ -189,8 +208,9 @@
             const box = parseInt(t.dataset.box,10);
             
             // Highlight the tile that was just pressed
-            t.classList.add('pressed-tile');
-            t.classList.add('opacity-80'); setTimeout(()=> t.classList.remove('opacity-80'),120);
+            const clickedTile = t;
+            clickedTile.classList.add('pressed-tile');
+            clickedTile.classList.add('opacity-80'); setTimeout(()=> clickedTile.classList.remove('opacity-80'),120);
             clickBuffer.push(box);
 
             if(clickBuffer.length === currentExpectedSeq.length){
@@ -219,6 +239,9 @@
                     await countdownDelay(TEST_PAUSE_MS); 
                 } 
 
+                // The border should remain until the next trial is *cued* (or the phase ends)
+                // The clearing of the border happens inside flashSequence and nextTrial end logic.
+                
                 trialIndex++;
                 await nextTrial();
             }
@@ -274,37 +297,90 @@
             return q; 
         }
 
-        async function startBlocked(){
-            mode='blocked';
-            practiceType = 'Practice 1'; 
-            blockedBtn.disabled = true; 
-            randomBtn.disabled = true; 
-            test1Btn.disabled = true; test2Btn.disabled = true;
-            practiceQueue = buildBlockedQueue(); trialIndex=0; updateStatus('Practice 1 started'); await nextTrial();
-        }
-        async function startRandom(){
-            mode='random';
-            practiceType = 'Practice 2'; 
-            blockedBtn.disabled = true; 
-            randomBtn.disabled = true; 
-            test1Btn.disabled = true; test2Btn.disabled = true;
-            practiceQueue = buildRandomQueue(); trialIndex=0; updateStatus('Practice 2 started'); await nextTrial();
+        // --- NEW MODAL LOGIC ---
+        function showInstructionsModal(title, text) {
+            instructionTitle.textContent = title;
+            instructionText.innerHTML = text;
+            instructionModal.style.display = 'flex';
         }
 
+        // This function holds the actual starting logic, called by the modal's 'Start' button
+        window.instructionStartAction = async function() {
+            instructionModal.style.display = 'none';
+
+            // Disable practice buttons permanently if one is chosen
+            if (pendingMode === 'blocked' || pendingMode === 'random') {
+                blockedBtn.disabled = true;
+                randomBtn.disabled = true;
+            }
+            
+            // Disable the test button being started
+            if (pendingMode === 'test1') { test1Btn.disabled = true; }
+            if (pendingMode === 'test2') { test2Btn.disabled = true; }
+            
+            // Disable other buttons during practice/test
+            test1Btn.disabled = true; test2Btn.disabled = true;
+
+            // Transfer pending variables to active variables
+            mode = pendingMode;
+            practiceQueue = pendingQueue;
+            practiceType = pendingPracticeType;
+            trialIndex = 0;
+            
+            updateStatus(mode.toUpperCase() + ' started');
+            await nextTrial();
+        }
+
+        // Practice 1 button handler
+        function startBlocked(){
+            pendingMode = 'blocked';
+            pendingPracticeType = 'Practice 1'; 
+            pendingQueue = buildBlockedQueue();
+            
+            const title = "Practice 1 (Blocked)";
+            const text = "In this phase, you will practice each sequence (**BLUE**, **GREEN**, **RED**, **YELLOW**) in blocks of 15 trials before moving to the next sequence.<br><br>The sequence will be shown to you first. Try to memorize and reproduce the sequence of three button clicks as quickly and accurately as possible after the screen cues you with the pattern color.";
+
+            showInstructionsModal(title, text);
+        }
+
+        // Practice 2 button handler
+        function startRandom(){
+            pendingMode = 'random';
+            pendingPracticeType = 'Practice 2'; 
+            pendingQueue = buildRandomQueue();
+
+            const title = "Practice 2 (Random)";
+            const text = "In this phase, the sequences (**BLUE**, **GREEN**, **RED**, **YELLOW**) will be presented in a completely random order across all trials.<br><br>The sequence will be shown to you first. Try to memorize and reproduce the sequence of three button clicks as quickly and accurately as possible after the screen cues you with the pattern color. Remember, the sequence changes frequently!";
+            
+            showInstructionsModal(title, text);
+        }
+
+        // Test button handler
         function startTest(which){
-            test1Btn.disabled=true; 
-            test2Btn.disabled=true;
+            // Ensure practice buttons are permanently disabled, even if cancel is pressed
+            blockedBtn.disabled = true;
+            randomBtn.disabled = true;
 
             if(which===1){ 
-                mode='test1'; practiceQueue = learningOrder.slice(); trialIndex=0; updateStatus('Test 1 started'); nextTrial(); 
+                pendingMode = 'test1'; 
+                pendingQueue = learningOrder.slice(); 
+                const title = "Test 1";
+                const text = "This is the **Test 1** phase. You must reproduce the learned sequences.<br><br>You will **NOT** see the sequence flash on the grid. Only the **color cue** will appear. Immediately after the cue, perform the required sequence (3 clicks) as quickly as you can.";
+                showInstructionsModal(title, text);
             } else { 
-                mode='test2'; practiceQueue = ['red','yellow','blue','green']; trialIndex=0; updateStatus('Test 2 started'); nextTrial(); 
+                pendingMode = 'test2'; 
+                pendingQueue = ['red','yellow','blue','green']; // Reusing the transfer sequence
+                const title = "Test 2";
+                const text = "This is the **Test 2** phase. This test is similar to Test 1, but uses a different set of sequences to measure transfer.<br><br>You will **NOT** see the sequence flash on the grid. Only the **color cue** will appear. Immediately after the cue, perform the required sequence (3 clicks) as quickly as you can.";
+                showInstructionsModal(title, text);
             }
         }
+        // --- END NEW MODAL LOGIC ---
+
 
         window.resetGame = ()=>{
             mode='idle'; practiceQueue=[]; currentPatternKey=null; clickBuffer=[]; trialIndex=0; setTilesDisabled(true);
-            clearTileFeedback(); // Ensure tiles are clear on reset
+            clearTileFeedback(); 
             test1Btn.disabled = false; 
             test2Btn.disabled = false; 
             blockedBtn.disabled=false; 
