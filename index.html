@@ -9,8 +9,8 @@
         html,body,#app{height:100%;margin:0}
         body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial;background:#f3f7fb}
         .game-grid{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:0.75rem;padding:0.75rem;height:calc(100vh - 136px)}
-        .tile{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:2.25rem;border-radius:12px;background:#fff;border:3px solid #cbd5e1;user-select:none; transition: background-color 0.1s ease;}
-        /* REMOVED .tile:focus to prevent the blue outline on click/focus */
+        .tile{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:2.25rem;border-radius:12px;background:#fff;border:3px solid #cbd5e1;user-select:none}
+        .tile:focus{outline:3px solid #60a5fa}
         .disabled{pointer-events:none;opacity:0.75}
         .status{height:72px;padding:0.75rem}
         @keyframes flash {0%{opacity:0.15}50%{opacity:1}100%{opacity:0.15}}
@@ -29,7 +29,7 @@
         </div>
         <div class="flex items-center gap-3">
             <div id="user-id" class="text-xs text-gray-500">User: Anonymous</div>
-            <button id="show-results-btn" class="px-3 py-1 bg-green-600 text-white rounded shadow-md" onclick="window.showResultsPopup()">Show Results</button>
+                        <button id="show-results-btn" class="px-3 py-1 bg-gray-600 text-white rounded shadow" onclick="showResults()">Show Results</button>
         </div>
     </div>
 
@@ -52,21 +52,6 @@
         </div>
     </main>
 
-    <div id="results-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
-            <div class="mt-3 text-center">
-                <h3 class="text-lg leading-6 font-medium text-gray-900">Motor Skill Acquisition Results</h3>
-                <div class="mt-2 px-7 py-3 text-left" id="results-content">
-                    </div>
-                <div class="items-center px-4 py-3">
-                    <button id="close-modal-btn" onclick="document.getElementById('results-modal').classList.add('hidden')" class="px-4 py-2 bg-indigo-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        Close
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <script>
         const PATTERNS = {
             blue: { sequence: [3,6,4], colorClass: 'bg-blue-500', name:'BLUE' },
@@ -77,7 +62,7 @@
 
         const TRIALS_PER_BLOCK = 15; 
         const TEST_PAUSE_MS = 5000; 
-        // New constant for averaging practice trials
+        // Constant for averaging practice trials
         const PRACTICE_AVG_BLOCK_SIZE = 10; 
 
         const tiles = Array.from(document.querySelectorAll('.tile'));
@@ -89,10 +74,7 @@
         const test2Btn = document.getElementById('test2-btn');
         const blockedBtn = document.getElementById('blocked-btn');
         const randomBtn = document.getElementById('random-btn');
-        // Get the result modal elements
-        const resultsModal = document.getElementById('results-modal');
-        const resultsContent = document.getElementById('results-content');
-
+        const showResultsBtn = document.getElementById('show-results-btn');
 
         let mode = 'idle';
         let learningOrder = ['blue','green','red','yellow'];
@@ -115,15 +97,7 @@
             if(trialText) trialDisplay.textContent = trialText;
         }
 
-        function setTilesDisabled(disabled){ 
-            tiles.forEach(t=>{ 
-                t.classList.toggle('disabled', disabled); 
-                t.disabled = disabled; 
-                // Reset tile color
-                t.style.backgroundColor = '';
-                t.style.borderColor = '#cbd5e1';
-            }); 
-        }
+        function setTilesDisabled(disabled){ tiles.forEach(t=>{ t.classList.toggle('disabled', disabled); t.disabled = disabled; }); }
 
         async function flashSequence(patternKey, showPattern=true){
             return new Promise(async (resolve)=>{
@@ -159,29 +133,11 @@
         function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
         function resetTrialVars(){ clickBuffer = []; startTime = null; }
-        
-        // Function to handle click feedback
-        function giveFeedback(tileElement, isCorrect) {
-            tileElement.style.backgroundColor = isCorrect ? '#4ADE80' : '#F87171'; // Green-400 or Red-400
-            tileElement.style.borderColor = isCorrect ? '#16A34A' : '#DC2626'; // Green-600 or Red-600
-            tileElement.style.color = '#fff';
-            // Set a timeout to clear the color
-            setTimeout(() => {
-                tileElement.style.backgroundColor = '';
-                tileElement.style.borderColor = '#cbd5e1';
-                tileElement.style.color = '';
-            }, 500);
-        }
 
         tiles.forEach(t=> t.addEventListener('click', async ()=>{
             if(isDuringCue || !isActive) return;
             const box = parseInt(t.dataset.box,10);
-            const expectedBox = currentExpectedSeq[clickBuffer.length];
-            const isCorrectClick = box === expectedBox;
-            
-            // Apply immediate feedback (green/red)
-            giveFeedback(t, isCorrectClick);
-
+            
             t.classList.add('opacity-80'); setTimeout(()=> t.classList.remove('opacity-80'),120);
             clickBuffer.push(box);
 
@@ -216,6 +172,7 @@
                     blockedBtn.disabled = false; randomBtn.disabled = false;
                     test1Btn.disabled = false; test2Btn.disabled = false;
                     mode = 'idle'; setTilesDisabled(true);
+                    showResultsBtn.focus(); // Focus on results button
                     return;
                 }
                 currentPatternKey = practiceQueue[trialIndex];
@@ -233,6 +190,7 @@
                     test1Btn.disabled = false; 
                     test2Btn.disabled = false;
                     mode='idle';
+                    showResultsBtn.focus(); // Focus on results button
                     return; 
                 }
                 currentPatternKey = practiceQueue[trialIndex];
@@ -284,119 +242,125 @@
 
         // Helper function to calculate averages for a given set of data
         function calculateAverages(data) {
-            if (data.length === 0) return { avgAccuracy: 0, avgSpeed: 0, totalPossible: 0 };
+            if (data.length === 0) return { avgAccuracy: 0, avgSpeed: 'N/A' };
             const totalCorrect = data.reduce((sum, d) => sum + d.correct, 0);
             const totalPossible = data.reduce((sum, d) => sum + d.expectedLength, 0);
-            const totalSpeed = data.reduce((sum, d) => sum + d.reactionTime_s, 0);
+            const totalReactionTime = data.reduce((sum, d) => sum + d.reactionTime_s, 0);
             
             const avgAccuracy = (totalPossible > 0) ? ((totalCorrect / totalPossible) * 100).toFixed(1) : 0;
-            const avgSpeed = (data.length > 0) ? (totalSpeed / data.length).toFixed(3) : 0;
+            const avgSpeed = (data.length > 0) ? (totalReactionTime / data.length).toFixed(3) : 'N/A';
             
             return {
                 avgAccuracy: avgAccuracy, // As percentage, 1 decimal point
-                avgSpeed: avgSpeed,
+                avgSpeed: avgSpeed, // In seconds, 3 decimal points
                 totalPossible: totalPossible
             };
         }
 
-        // --- NEW FUNCTION TO SHOW RESULTS POPUP ---
-        window.showResultsPopup = function() {
-            if (results.length === 0) {
-                alert('No results to display. Please complete at least one phase.');
-                return;
-            }
+        // --- NEW FUNCTION TO DISPLAY RESULTS POPUP ---
+        window.showResults = function(){
+            if(results.length === 0){ alert('No results recorded yet. Please complete a practice or test phase.'); return; }
 
-            const practiceResults = results.filter(r => r.phase === 'blocked' || r.phase === 'random');
-            const test1Results = results.filter(r => r.phase === 'test1');
-            const test2Results = results.filter(r => r.phase === 'test2');
+            const practiceResults = results.filter(r => r.phase === 'blocked' || r.phase === 'random');
+            const test1Results = results.filter(r => r.phase === 'test1');
+            const test2Results = results.filter(r => r.phase === 'test2');
+            
+            const practiceMode = practiceType || (practiceResults.length > 0 ? (practiceResults[0].phase === 'blocked' ? 'Blocked' : 'Random') : 'N/A');
+
+            let htmlContent = `
+                <h1>Motor Skill Acquisition Results</h1>
+                <p><strong>Practice Type:</strong> ${practiceMode}</p>
+                <p><strong>Date/Time:</strong> ${new Date().toLocaleString()}</p>
+                <hr>
+            `;
+            
+            // --- PRACTICE DETAILS (Averaged by 10 rounds) ---
+            if (practiceResults.length > 0) {
+                htmlContent += `<h2>Practice Details (Total Trials: ${practiceResults.length})</h2><ul>`;
+                
+                // Block-by-block averages
+                for (let i = 0; i < practiceResults.length; i += PRACTICE_AVG_BLOCK_SIZE) {
+                    const block = practiceResults.slice(i, i + PRACTICE_AVG_BLOCK_SIZE);
+                    const blockStart = i + 1;
+                    const blockEnd = Math.min(i + PRACTICE_AVG_BLOCK_SIZE, practiceResults.length);
+                    
+                    const blockData = calculateAverages(block);
+
+                    htmlContent += `
+                        <li>
+                            <strong>Rounds ${blockStart}-${blockEnd}:</strong>
+                            Average Accuracy ${blockData.avgAccuracy}%,
+                            Average Speed ${blockData.avgSpeed}s
+                        </li>
+                    `;
+                }
+                htmlContent += `</ul>`;
+                
+                // Overall practice averages
+                const overallPracticeData = calculateAverages(practiceResults);
+                htmlContent += `
+                    <h3>Practice Overall</h3>
+                    <ul>
+                        <li>Average Accuracy: ${overallPracticeData.avgAccuracy}%</li>
+                        <li>Average Speed: ${overallPracticeData.avgSpeed}s</li>
+                    </ul>
+                `;
+            } else {
+                htmlContent += `<h2>Practice Details</h2><p>No practice data recorded.</p>`;
+            }
+
+            // --- TEST 1 (Retention) DETAILS (Overall only) ---
+            const test1PhaseName = 'Test 1 (Retention)';
+            if (test1Results.length > 0) {
+                const overallTest1Data = calculateAverages(test1Results);
+                htmlContent += `
+                    <hr><h2>${test1PhaseName} Details</h2>
+                    <ul>
+                        <li>Average Accuracy: ${overallTest1Data.avgAccuracy}%</li>
+                        <li>Average Speed: ${overallTest1Data.avgSpeed}s</li>
+                    </ul>
+                `;
+            } else {
+                htmlContent += `<hr><h2>${test1PhaseName} Details</h2><p>No data recorded.</p>`;
+            }
+
+            // --- TEST 2 (Transfer) DETAILS (Overall only) ---
+            const test2PhaseName = 'Test 2 (Transfer)';
+            if (test2Results.length > 0) {
+                const overallTest2Data = calculateAverages(test2Results);
+                htmlContent += `
+                    <hr><h2>${test2PhaseName} Details</h2>
+                    <ul>
+                        <li>Average Accuracy: ${overallTest2Data.avgAccuracy}%</li>
+                        <li>Average Speed: ${overallTest2Data.avgSpeed}s</li>
+                    </ul>
+                `;
+            } else {
+                htmlContent += `<hr><h2>${test2PhaseName} Details</h2><p>No data recorded.</p>`;
+            }
             
-            const practiceMode = practiceType || (practiceResults.length > 0 ? (practiceResults[0].phase === 'blocked' ? 'Blocked' : 'Random') : 'N/A');
-
-            let htmlContent = '<div class="space-y-4 text-sm">';
-            
-            // 1. Header
-            htmlContent += `<p><strong>Practice Type:</strong> ${practiceMode}</p>`;
-            htmlContent += `<p><strong>Date/Time:</strong> ${new Date().toLocaleString()}</p><hr>`;
-            
-            
-            // --- PRACTICE DETAILS (Averaged by 10 rounds) ---
-            
-            const practicePhaseName = 'Practice';
-            if (practiceResults.length > 0) {
-                htmlContent += `
-                    <div class="bg-gray-100 p-3 rounded-md">
-                        <h4 class="font-bold text-base text-indigo-600">${practicePhaseName} Details (Total Trials: ${practiceResults.length})</h4>
-                        <ul class="mt-2 list-disc list-inside space-y-1 ml-4">
-                `;
-
-                // Block-by-block averages
-                for (let i = 0; i < practiceResults.length; i += PRACTICE_AVG_BLOCK_SIZE) {
-                    const block = practiceResults.slice(i, i + PRACTICE_AVG_BLOCK_SIZE);
-                    const blockStart = i + 1;
-                    const blockEnd = Math.min(i + PRACTICE_AVG_BLOCK_SIZE, practiceResults.length);
-                    
-                    const blockData = calculateAverages(block);
-
-                    htmlContent += `
-                        <li>
-                            <span class="font-medium">Rounds ${blockStart}-${blockEnd}:</span> 
-                            Accuracy ${blockData.avgAccuracy}%, 
-                            Speed ${blockData.avgSpeed}s
-                        </li>
-                    `;
-                }
-                
-                // Overall practice averages
-                const overallPracticeData = calculateAverages(practiceResults);
-                htmlContent += `
-                        </ul>
-                        <div class="mt-3 pt-2 border-t border-gray-300">
-                            <p class="font-semibold">Overall ${practicePhaseName}:</p>
-                            <p>- Average Accuracy: ${overallPracticeData.avgAccuracy}%</p>
-                            <p>- Average Speed: ${overallPracticeData.avgSpeed}s</p>
-                        </div>
-                    </div>
-                `;
-            } else {
-                htmlContent += `<div class="bg-gray-100 p-3 rounded-md"><p class="font-semibold text-base text-red-600">${practicePhaseName} Details: No data recorded.</p></div>`;
-            }
-
-            
-            // --- TEST 1 (Retention) DETAILS (Overall only) ---
-            const test1PhaseName = 'Test 1 (Retention)';
-            if (test1Results.length > 0) {
-                const overallTest1Data = calculateAverages(test1Results);
-                htmlContent += `
-                    <div class="bg-gray-100 p-3 rounded-md">
-                        <h4 class="font-bold text-base text-purple-600">${test1PhaseName} Details</h4>
-                        <p>- Average Accuracy: ${overallTest1Data.avgAccuracy}%</p>
-                        <p>- Average Speed: ${overallTest1Data.avgSpeed}s</p>
-                    </div>
-                `;
-            } else {
-                htmlContent += `<div class="bg-gray-100 p-3 rounded-md"><p class="font-semibold text-base text-red-600">${test1PhaseName} Details: No data recorded.</p></div>`;
-            }
-
-            // --- TEST 2 (Transfer) DETAILS (Overall only) ---
-            const test2PhaseName = 'Test 2 (Transfer)';
-            if (test2Results.length > 0) {
-                const overallTest2Data = calculateAverages(test2Results);
-                htmlContent += `
-                    <div class="bg-gray-100 p-3 rounded-md">
-                        <h4 class="font-bold text-base text-pink-600">${test2PhaseName} Details</h4>
-                        <p>- Average Accuracy: ${overallTest2Data.avgAccuracy}%</p>
-                        <p>- Average Speed: ${overallTest2Data.avgSpeed}s</p>
-                    </div>
-                `;
-            } else {
-                htmlContent += `<div class="bg-gray-100 p-3 rounded-md"><p class="font-semibold text-base text-red-600">${test2PhaseName} Details: No data recorded.</p></div>`;
-            }
-
-            htmlContent += '</div>';
-
-            resultsContent.innerHTML = htmlContent;
-            resultsModal.classList.remove('hidden');
-        }
+            // Open a new window and write the content
+            const resultsWindow = window.open("", "ResultsPopup", "width=600,height=600,scrollbars=yes");
+            resultsWindow.document.write(`
+                <html>
+                <head>
+                    <title>Results Summary</title>
+                    <style>
+                        body { font-family: sans-serif; padding: 20px; line-height: 1.6; }
+                        h1 { font-size: 1.5em; margin-bottom: 10px; }
+                        h2 { font-size: 1.2em; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 20px; }
+                        h3 { font-size: 1.1em; margin-top: 15px; }
+                        ul { list-style-type: disc; margin-left: 20px; }
+                        li { margin-bottom: 5px; }
+                    </style>
+                </head>
+                <body>
+                    ${htmlContent}
+                </body>
+                </html>
+            `);
+            resultsWindow.document.close();
+        }
     </script>
 </body>
 </html>
