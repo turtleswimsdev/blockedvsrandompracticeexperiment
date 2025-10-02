@@ -9,13 +9,18 @@
         html,body,#app{height:100%;margin:0}
         body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial;background:#f3f7fb}
         .game-grid{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:0.75rem;padding:0.75rem;height:calc(100vh - 136px)}
-        .tile{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:2.25rem;border-radius:12px;background:#fff;border:3px solid #cbd5e1;user-select:none}
+        .tile{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:2.25rem;border-radius:12px;background:#fff;border:3px solid #cbd5e1;user-select:none; transition: border-color 0.1s;} /* Added transition for smooth effect */
         .tile:focus{outline:3px solid #60a5fa}
         .disabled{pointer-events:none;opacity:0.75}
         .status{height:72px;padding:0.75rem}
         @keyframes flash {0%{opacity:0.15}50%{opacity:1}100%{opacity:0.15}}
         .flashing{animation:flash 300ms ease-in-out infinite}
-        /* New Modal Styling */
+        /* NEW STYLE: Border to show the button has been pressed */
+        .pressed-tile {
+            border-color: #f59e0b; /* Tailwind amber-500 for high visibility */
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.6);
+        }
+        /* Modal Styling */
         .modal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 100;
@@ -114,6 +119,11 @@
         let results = [];
         let practiceType = null; 
 
+        // Helper to remove the pressed state from all tiles
+        function clearTileFeedback() {
+            tiles.forEach(t => t.classList.remove('pressed-tile'));
+        }
+
         tiles.forEach(t=>{ t.addEventListener('keydown',(e)=>{ if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); t.click(); } }); });
 
         function updateStatus(phaseText, cueText='', trialText=''){
@@ -127,6 +137,8 @@
         async function flashSequence(patternKey, showPattern=true){
             return new Promise(async (resolve)=>{
                 isDuringCue = true; setTilesDisabled(true);
+                clearTileFeedback(); // Clear any existing feedback when a new cue starts
+
                 const pat = PATTERNS[patternKey];
                 updateStatus(mode.toUpperCase(), pat.name, `${trialIndex+1}/${practiceQueue.length || 0}`);
 
@@ -167,12 +179,17 @@
         }
 
 
-        function resetTrialVars(){ clickBuffer = []; startTime = null; }
+        function resetTrialVars(){ 
+            clickBuffer = []; 
+            startTime = null; 
+        }
 
         tiles.forEach(t=> t.addEventListener('click', async ()=>{
             if(isDuringCue || !isActive) return;
             const box = parseInt(t.dataset.box,10);
             
+            // Highlight the tile that was just pressed
+            t.classList.add('pressed-tile');
             t.classList.add('opacity-80'); setTimeout(()=> t.classList.remove('opacity-80'),120);
             clickBuffer.push(box);
 
@@ -211,11 +228,9 @@
             if(mode === 'blocked' || mode === 'random'){
                 if(trialIndex >= practiceQueue.length){
                     updateStatus('Practice complete');
-                    // Keep practice buttons disabled permanently after one is chosen
-                    // blockedBtn.disabled = false; 
-                    // randomBtn.disabled = false;
                     test1Btn.disabled = false; test2Btn.disabled = false;
                     mode = 'idle'; setTilesDisabled(true);
+                    clearTileFeedback();
                     return;
                 }
                 currentPatternKey = practiceQueue[trialIndex];
@@ -229,18 +244,13 @@
                     updateStatus('Test complete');
                     setTilesDisabled(true); 
                     
-                    // CRITICAL CHANGE: Disable the specific test button permanently
                     if(mode === 'test1') { test1Btn.disabled = true; }
                     if(mode === 'test2') { test2Btn.disabled = true; }
 
-                    // Only enable the other test if it hasn't been run yet (though they are run sequentially)
                     if(mode === 'test1') { test2Btn.disabled = false; }
                     
-                    // Keep practice buttons disabled
-                    // blockedBtn.disabled = false; 
-                    // randomBtn.disabled = false;
-
                     mode='idle';
+                    clearTileFeedback();
                     return; 
                 }
                 currentPatternKey = practiceQueue[trialIndex];
@@ -267,7 +277,6 @@
         async function startBlocked(){
             mode='blocked';
             practiceType = 'Practice 1'; 
-            // CRITICAL CHANGE: Disable BOTH practice buttons
             blockedBtn.disabled = true; 
             randomBtn.disabled = true; 
             test1Btn.disabled = true; test2Btn.disabled = true;
@@ -276,7 +285,6 @@
         async function startRandom(){
             mode='random';
             practiceType = 'Practice 2'; 
-            // CRITICAL CHANGE: Disable BOTH practice buttons
             blockedBtn.disabled = true; 
             randomBtn.disabled = true; 
             test1Btn.disabled = true; test2Btn.disabled = true;
@@ -284,9 +292,6 @@
         }
 
         function startTest(which){
-            // Keep practice buttons disabled
-            // blockedBtn.disabled=true; 
-            // randomBtn.disabled=true; 
             test1Btn.disabled=true; 
             test2Btn.disabled=true;
 
@@ -299,7 +304,7 @@
 
         window.resetGame = ()=>{
             mode='idle'; practiceQueue=[]; currentPatternKey=null; clickBuffer=[]; trialIndex=0; setTilesDisabled(true);
-            // Reset state of all buttons
+            clearTileFeedback(); // Ensure tiles are clear on reset
             test1Btn.disabled = false; 
             test2Btn.disabled = false; 
             blockedBtn.disabled=false; 
