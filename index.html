@@ -9,20 +9,19 @@
         html,body,#app{height:100%;margin:0}
         body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial;background:#f3f7fb}
         .game-grid{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:0.75rem;padding:0.75rem;height:calc(100vh - 136px)}
-        .tile{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:2.25rem;border-radius:12px;background:#fff;border:3px solid #cbd5e1;user-select:none; }
+        .tile{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:2.25rem;border-radius:12px;background:#fff;border:3px solid #cbd5e1;user-select:none}
         .tile:focus{outline:3px solid #60a5fa}
         .disabled{pointer-events:none;opacity:0.75}
         .status{height:72px;padding:0.75rem}
         @keyframes flash {0%{opacity:0.15}50%{opacity:1}100%{opacity:0.15}}
         .flashing{animation:flash 300ms ease-in-out infinite}
-        
-        /* Modal Styling */
+        /* New Modal Styling */
         .modal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 100;
         }
         .modal-content {
-            background: white; padding: 20px; border-radius: 8px; max-width: 90%; width: 500px; max-height: 80%; overflow: auto;
+            background: white; padding: 20px; border-radius: 8px; max-width: 80%; max-height: 80%; overflow: auto;
             box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
         .modal-content pre {
@@ -30,12 +29,6 @@
             font-family: monospace;
             font-size: 14px;
         }
-        /* Tailwind colors used for feedback - ensures background color and white text */
-        .bg-blue-500 { background-color: #3b82f6; color: white !important; }
-        .bg-green-500 { background-color: #22c55e; color: white !important; }
-        .bg-red-500 { background-color: #ef4444; color: white !important; }
-        .bg-yellow-400 { background-color: #facc15; color: white !important; }
-
     </style>
 </head>
 <body>
@@ -76,15 +69,6 @@
         </div>
     </main>
     
-    <div id="instruction-modal" class="modal" onclick="this.style.display='none'">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h2 id="instruction-title" class="text-xl font-bold mb-3">Phase Instructions</h2>
-            <p id="instruction-text" class="mb-4 text-gray-700">Detailed instructions go here.</p>
-            <button id="instruction-start-btn" class="mt-4 px-4 py-2 bg-indigo-600 text-white rounded" onclick="window.instructionStartAction()">Start</button>
-            <button class="mt-4 px-4 py-2 bg-gray-500 text-white rounded" onclick="document.getElementById('instruction-modal').style.display='none'">Cancel</button>
-        </div>
-    </div>
-
     <div id="results-modal" class="modal" onclick="this.style.display='none'">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h2 class="text-xl font-bold mb-3">Your Session Results</h2>
@@ -100,7 +84,6 @@
             red: { sequence: [5,3,6], colorClass: 'bg-red-500', name:'RED' },
             yellow: { sequence: [3,4,1], colorClass: 'bg-yellow-400', name:'YELLOW' }
         };
-        const ALL_COLOR_CLASSES = ['bg-blue-500', 'bg-green-500', 'bg-red-500', 'bg-yellow-400'];
 
         const TRIALS_PER_BLOCK = 15; 
         const TEST_PAUSE_MS = 5000; 
@@ -117,17 +100,7 @@
         const randomBtn = document.getElementById('random-btn');
         const resultsModal = document.getElementById('results-modal');
         const resultsDisplay = document.getElementById('results-display');
-        
-        // Instruction Modal elements
-        const instructionModal = document.getElementById('instruction-modal');
-        const instructionTitle = document.getElementById('instruction-title');
-        const instructionText = document.getElementById('instruction-text');
 
-        // Variables to store pending phase details
-        let pendingMode = 'idle';
-        let pendingQueue = [];
-        let pendingPracticeType = null;
-        
         let mode = 'idle';
         let learningOrder = ['blue','green','red','yellow'];
         let practiceQueue = [];
@@ -140,15 +113,6 @@
         let trialIndex = 0;
         let results = [];
         let practiceType = null; 
-
-        // Helper to remove all color/style feedback from tiles
-        function resetTileAppearance() {
-            tiles.forEach(t => {
-                // Remove all possible color classes
-                ALL_COLOR_CLASSES.forEach(c => t.classList.remove(c));
-                t.style.color = ''; // Reset text color
-            });
-        }
 
         tiles.forEach(t=>{ t.addEventListener('keydown',(e)=>{ if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); t.click(); } }); });
 
@@ -163,8 +127,6 @@
         async function flashSequence(patternKey, showPattern=true){
             return new Promise(async (resolve)=>{
                 isDuringCue = true; setTilesDisabled(true);
-                resetTileAppearance(); // Clear feedback when a new cue starts
-
                 const pat = PATTERNS[patternKey];
                 updateStatus(mode.toUpperCase(), pat.name, `${trialIndex+1}/${practiceQueue.length || 0}`);
 
@@ -178,10 +140,10 @@
                     for(const b of pat.sequence){
                         const el = document.querySelector(`.tile-${b}`);
                         el.classList.add(pat.colorClass);
-                        el.style.color = '#fff'; // Set text color to white for contrast
+                        el.style.color = '#fff';
                         await delay(500); 
                         el.classList.remove(pat.colorClass);
-                        el.style.color = ''; // Reset text color
+                        el.style.color = '';
                         await delay(200);
                     }
                 }
@@ -205,33 +167,13 @@
         }
 
 
-        function resetTrialVars(){ 
-            clickBuffer = []; 
-            startTime = null; 
-        }
+        function resetTrialVars(){ clickBuffer = []; startTime = null; }
 
         tiles.forEach(t=> t.addEventListener('click', async ()=>{
             if(isDuringCue || !isActive) return;
             const box = parseInt(t.dataset.box,10);
             
-            const pat = PATTERNS[currentPatternKey];
-            const clickedTile = t;
-            
-            // 1. Apply color for the brief flash
-            clickedTile.classList.add(pat.colorClass);
-            clickedTile.style.color = '#fff';
-
-            // 2. Brief opacity flash
-            clickedTile.classList.add('opacity-80'); 
-            
-            // 3. Revert the flash immediately after the brief moment (120ms)
-            setTimeout(()=> {
-                clickedTile.classList.remove('opacity-80');
-                // The crucial change: Remove the color class immediately after the flash
-                clickedTile.classList.remove(pat.colorClass); 
-                clickedTile.style.color = '';
-            }, 120); 
-
+            t.classList.add('opacity-80'); setTimeout(()=> t.classList.remove('opacity-80'),120);
             clickBuffer.push(box);
 
             if(clickBuffer.length === currentExpectedSeq.length){
@@ -259,9 +201,7 @@
                     updateStatus('Waiting before next cue...', '', `${trialIndex+1}/${practiceQueue.length}`); 
                     await countdownDelay(TEST_PAUSE_MS); 
                 } 
-                
-                // Since the feedback is cleared by the setTimeout above, we don't need resetTileAppearance here.
-                
+
                 trialIndex++;
                 await nextTrial();
             }
@@ -271,36 +211,43 @@
             if(mode === 'blocked' || mode === 'random'){
                 if(trialIndex >= practiceQueue.length){
                     updateStatus('Practice complete');
+                    // Keep practice buttons disabled permanently after one is chosen
+                    // blockedBtn.disabled = false; 
+                    // randomBtn.disabled = false;
                     test1Btn.disabled = false; test2Btn.disabled = false;
                     mode = 'idle'; setTilesDisabled(true);
-                    resetTileAppearance(); 
                     return;
                 }
                 currentPatternKey = practiceQueue[trialIndex];
                 currentExpectedSeq = PATTERNS[currentPatternKey].sequence.slice();
                 
                 resetTrialVars(); 
-                await flashSequence(currentPatternKey, true); 
+                await flashSequence(currentPatternKey, true);
                 isActive = true; 
             }else if(mode === 'test1' || mode === 'test2'){
                 if(trialIndex >= practiceQueue.length){ 
                     updateStatus('Test complete');
                     setTilesDisabled(true); 
                     
+                    // CRITICAL CHANGE: Disable the specific test button permanently
                     if(mode === 'test1') { test1Btn.disabled = true; }
                     if(mode === 'test2') { test2Btn.disabled = true; }
 
+                    // Only enable the other test if it hasn't been run yet (though they are run sequentially)
                     if(mode === 'test1') { test2Btn.disabled = false; }
                     
+                    // Keep practice buttons disabled
+                    // blockedBtn.disabled = false; 
+                    // randomBtn.disabled = false;
+
                     mode='idle';
-                    resetTileAppearance(); 
                     return; 
                 }
                 currentPatternKey = practiceQueue[trialIndex];
                 currentExpectedSeq = PATTERNS[currentPatternKey].sequence.slice();
                 
                 resetTrialVars(); 
-                await flashSequence(currentPatternKey, false); 
+                await flashSequence(currentPatternKey, false);
                 isActive = true; 
             }
         }
@@ -317,91 +264,42 @@
             return q; 
         }
 
-        // --- MODAL LOGIC (Copied from previous step) ---
-        function showInstructionsModal(title, text) {
-            instructionTitle.textContent = title;
-            instructionText.innerHTML = text;
-            instructionModal.style.display = 'flex';
-        }
-
-        window.instructionStartAction = async function() {
-            instructionModal.style.display = 'none';
-
-            if (pendingMode === 'blocked' || pendingMode === 'random') {
-                blockedBtn.disabled = true;
-                randomBtn.disabled = true;
-            }
-            
-            if (pendingMode === 'test1') { test1Btn.disabled = true; }
-            if (pendingMode === 'test2') { test2Btn.disabled = true; }
-            
-            mode = pendingMode;
-            practiceQueue = pendingQueue;
-            practiceType = pendingPracticeType;
-            trialIndex = 0;
-            
-            updateStatus(mode.toUpperCase() + ' started');
-            await nextTrial();
-        }
-
-        function startBlocked(){
+        async function startBlocked(){
+            mode='blocked';
+            practiceType = 'Practice 1'; 
+            // CRITICAL CHANGE: Disable BOTH practice buttons
             blockedBtn.disabled = true; 
-            randomBtn.disabled = true;
-            test1Btn.disabled = true; 
-            test2Btn.disabled = true;
-
-            pendingMode = 'blocked';
-            pendingPracticeType = 'Practice 1'; 
-            pendingQueue = buildBlockedQueue();
-            
-            const title = "Practice 1 (Blocked)";
-            const text = "In this phase, you will practice each sequence (**BLUE**, **GREEN**, **RED**, **YELLOW**) in blocks of 15 trials before moving to the next sequence.<br><br>The sequence will be shown to you first. Try to memorize and reproduce the sequence of three button clicks as quickly and accurately as possible after the screen cues you with the pattern color.";
-
-            showInstructionsModal(title, text);
+            randomBtn.disabled = true; 
+            test1Btn.disabled = true; test2Btn.disabled = true;
+            practiceQueue = buildBlockedQueue(); trialIndex=0; updateStatus('Practice 1 started'); await nextTrial();
         }
-
-        function startRandom(){
+        async function startRandom(){
+            mode='random';
+            practiceType = 'Practice 2'; 
+            // CRITICAL CHANGE: Disable BOTH practice buttons
             blockedBtn.disabled = true; 
-            randomBtn.disabled = true;
-            test1Btn.disabled = true; 
-            test2Btn.disabled = true;
-
-            pendingMode = 'random';
-            pendingPracticeType = 'Practice 2'; 
-            pendingQueue = buildRandomQueue();
-
-            const title = "Practice 2 (Random)";
-            const text = "In this phase, the sequences (**BLUE**, **GREEN**, **RED**, **YELLOW**) will be presented in a completely random order across all trials.<br><br>The sequence will be shown to you first. Try to memorize and reproduce the sequence of three button clicks as quickly and accurately as possible after the screen cues you with the pattern color. Remember, the sequence changes frequently!";
-            
-            showInstructionsModal(title, text);
+            randomBtn.disabled = true; 
+            test1Btn.disabled = true; test2Btn.disabled = true;
+            practiceQueue = buildRandomQueue(); trialIndex=0; updateStatus('Practice 2 started'); await nextTrial();
         }
 
         function startTest(which){
-            blockedBtn.disabled = true; 
-            randomBtn.disabled = true;
-            test1Btn.disabled = true; 
-            test2Btn.disabled = true;
+            // Keep practice buttons disabled
+            // blockedBtn.disabled=true; 
+            // randomBtn.disabled=true; 
+            test1Btn.disabled=true; 
+            test2Btn.disabled=true;
 
             if(which===1){ 
-                pendingMode = 'test1'; 
-                pendingQueue = learningOrder.slice(); 
-                const title = "Test 1";
-                const text = "This is the **Test 1** phase. You must reproduce the learned sequences.<br><br>You will **NOT** see the sequence flash on the grid. Only the **color cue** will appear. Immediately after the cue, perform the required sequence (3 clicks) as quickly as you can.";
-                showInstructionsModal(title, text);
+                mode='test1'; practiceQueue = learningOrder.slice(); trialIndex=0; updateStatus('Test 1 started'); nextTrial(); 
             } else { 
-                pendingMode = 'test2'; 
-                pendingQueue = ['red','yellow','blue','green']; 
-                const title = "Test 2";
-                const text = "This is the **Test 2** phase. This test is similar to Test 1, but uses a different set of sequences to measure transfer.<br><br>You will **NOT** see the sequence flash on the grid. Only the **color cue** will appear. Immediately after the cue, perform the required sequence (3 clicks) as quickly as you can.";
-                showInstructionsModal(title, text);
+                mode='test2'; practiceQueue = ['red','yellow','blue','green']; trialIndex=0; updateStatus('Test 2 started'); nextTrial(); 
             }
         }
-        // --- END MODAL LOGIC ---
-
 
         window.resetGame = ()=>{
             mode='idle'; practiceQueue=[]; currentPatternKey=null; clickBuffer=[]; trialIndex=0; setTilesDisabled(true);
-            resetTileAppearance(); 
+            // Reset state of all buttons
             test1Btn.disabled = false; 
             test2Btn.disabled = false; 
             blockedBtn.disabled=false; 
@@ -427,7 +325,7 @@
             };
         }
 
-        // --- CORE FUNCTION TO GENERATE RESULTS TEXT (Copied from previous step) ---
+        // --- CORE FUNCTION TO GENERATE RESULTS TEXT ---
         window.generateResultsText = function(){
             if(results.length === 0){ return "No results recorded. Please complete a practice or test phase first."; }
 
@@ -439,16 +337,20 @@
 
             let txtData = [];
             
+            // 1. Header
             txtData.push(`--- Motor Skill Acquisition Results ---`);
             txtData.push(`Practice Type: ${practiceMode}`);
             txtData.push(`Date/Time: ${new Date().toLocaleString()}`);
             txtData.push(`-------------------------------------`);
             
             
+            // --- PRACTICE DETAILS (Averaged by 10 rounds) ---
+            
             const practicePhaseName = practiceMode; 
             if (practiceResults.length > 0) {
                 txtData.push(`\n## ${practicePhaseName.toUpperCase()} DETAILS (Total Trials: ${practiceResults.length})`);
 
+                // Block-by-block averages
                 for (let i = 0; i < practiceResults.length; i += PRACTICE_AVG_BLOCK_SIZE) {
                     const block = practiceResults.slice(i, i + PRACTICE_AVG_BLOCK_SIZE);
                     const blockStart = i + 1;
@@ -459,6 +361,7 @@
                     txtData.push(`${practicePhaseName.replace(' ','_')}_Rounds_${blockStart}-${blockEnd}: Average Accuracy ${blockData.avgAccuracy}%`);
                 }
                 
+                // Overall practice averages
                 const overallPracticeData = calculateAverages(practiceResults);
                 txtData.push(`\n${practicePhaseName.toUpperCase()}_OVERALL:`);
                 txtData.push(`- Average Accuracy: ${overallPracticeData.avgAccuracy}%`);
@@ -468,6 +371,7 @@
             }
 
             
+            // --- TEST 1 DETAILS (Overall only) ---
             const test1PhaseName = 'Test 1';
             if (test1Results.length > 0) {
                 const overallTest1Data = calculateAverages(test1Results);
@@ -478,6 +382,7 @@
                 txtData.push(`\n## ${test1PhaseName.toUpperCase()} DETAILS: No data recorded.`);
             }
 
+            // --- TEST 2 DETAILS (Overall only) ---
             const test2PhaseName = 'Test 2';
             if (test2Results.length > 0) {
                 const overallTest2Data = calculateAverages(test2Results);
@@ -491,7 +396,7 @@
             return txtData.join('\n');
         }
 
-        // --- DOWNLOAD / DISPLAY FUNCTIONS (Copied from previous step) ---
+        // --- DOWNLOAD FUNCTION (Calls generator) ---
         window.downloadResults = function(){
             const txtContent = window.generateResultsText();
             if(txtContent.includes("No results recorded")){
@@ -508,6 +413,7 @@
             URL.revokeObjectURL(url);
         }
         
+        // --- DISPLAY FUNCTION (Calls generator and shows modal) ---
         window.displayResults = function(){
             const txtContent = window.generateResultsText();
 
