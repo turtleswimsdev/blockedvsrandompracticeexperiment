@@ -48,10 +48,11 @@
     </div>
 
     <div class="p-3 bg-white flex gap-3 items-center">
-        <button id="blocked-btn" class="px-4 py-2 bg-indigo-600 text-white rounded shadow" onclick="startBlocked()">Blocked Practice</button>
-        <button id="random-btn" class="px-4 py-2 bg-sky-600 text-white rounded shadow" onclick="startRandom()">Random Practice</button>
-        <button id="test1-btn" class="px-4 py-2 bg-purple-600 text-white rounded shadow" onclick="startTest(1)">Test 1 (Retention)</button>
-        <button id="test2-btn" class="px-4 py-2 bg-pink-600 text-white rounded shadow" onclick="startTest(2)">Test 2 (Transfer)</button>
+        <button id="blocked-btn" class="px-4 py-2 bg-indigo-600 text-white rounded shadow" onclick="startBlocked()">Practice 1</button>
+        <button id="random-btn" class="px-4 py-2 bg-sky-600 text-white rounded shadow" onclick="startRandom()">Practice 2</button>
+        <button id="test1-btn" class="px-4 py-2 bg-purple-600 text-white rounded shadow" onclick="startTest(1)">Test 1</button>
+        <button id="test2-btn" class="px-4 py-2 bg-pink-600 text-white rounded shadow" onclick="startTest(2)">Test 2</button>
+        
         <button id="view-results-btn" class="px-4 py-2 bg-green-600 text-white rounded shadow" onclick="window.displayResults()">View Results</button>
         
         <div class="ml-auto text-sm text-gray-700">Last Trial: <span id="last-summary">-</span></div>
@@ -111,7 +112,8 @@
         let isActive = false;
         let trialIndex = 0;
         let results = [];
-        let practiceType = null; // Store which practice type was used
+        // Updated practiceType names
+        let practiceType = null; // Stores 'Practice 1' or 'Practice 2'
 
         tiles.forEach(t=>{ t.addEventListener('keydown',(e)=>{ if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); t.click(); } }); });
 
@@ -255,21 +257,21 @@
 
         async function startBlocked(){
             mode='blocked';
-            practiceType = 'Blocked'; 
+            practiceType = 'Practice 1'; // Updated name
             blockedBtn.disabled = true; randomBtn.disabled = true; test1Btn.disabled = true; test2Btn.disabled = true;
-            practiceQueue = buildBlockedQueue(); trialIndex=0; updateStatus('Blocked practice started'); await nextTrial();
+            practiceQueue = buildBlockedQueue(); trialIndex=0; updateStatus('Practice 1 started'); await nextTrial();
         }
         async function startRandom(){
             mode='random';
-            practiceType = 'Random'; 
+            practiceType = 'Practice 2'; // Updated name
             blockedBtn.disabled=true; randomBtn.disabled=true; test1Btn.disabled=true; test2Btn.disabled=true;
-            practiceQueue = buildRandomQueue(); trialIndex=0; updateStatus('Random practice started'); await nextTrial();
+            practiceQueue = buildRandomQueue(); trialIndex=0; updateStatus('Practice 2 started'); await nextTrial();
         }
 
         function startTest(which){
             blockedBtn.disabled=true; randomBtn.disabled=true; test1Btn.disabled=true; test2Btn.disabled=true;
-            if(which===1){ mode='test1'; practiceQueue = learningOrder.slice(); trialIndex=0; updateStatus('Test 1 (Retention) started'); nextTrial(); }
-            else { mode='test2'; practiceQueue = ['red','yellow','blue','green']; trialIndex=0; updateStatus('Test 2 (Transfer) started'); nextTrial(); }
+            if(which===1){ mode='test1'; practiceQueue = learningOrder.slice(); trialIndex=0; updateStatus('Test 1 started'); nextTrial(); }
+            else { mode='test2'; practiceQueue = ['red','yellow','blue','green']; trialIndex=0; updateStatus('Test 2 started'); nextTrial(); }
         }
 
         window.resetGame = ()=>{
@@ -304,7 +306,8 @@
             const test1Results = results.filter(r => r.phase === 'test1');
             const test2Results = results.filter(r => r.phase === 'test2');
             
-            const practiceMode = practiceType || (practiceResults.length > 0 ? (practiceResults[0].phase === 'blocked' ? 'Blocked' : 'Random') : 'N/A');
+            // Determine practice mode based on the practiceType variable set during startBlocked/startRandom
+            const practiceMode = practiceType || (practiceResults.length > 0 ? (practiceResults[0].phase === 'blocked' ? 'Practice 1' : 'Practice 2') : 'N/A');
 
             let txtData = [];
             
@@ -317,7 +320,7 @@
             
             // --- PRACTICE DETAILS (Averaged by 10 rounds) ---
             
-            const practicePhaseName = 'Practice';
+            const practicePhaseName = practiceMode; // Use the stored practice name
             if (practiceResults.length > 0) {
                 txtData.push(`\n## ${practicePhaseName.toUpperCase()} DETAILS (Total Trials: ${practiceResults.length})`);
 
@@ -329,7 +332,7 @@
                     
                     const blockData = calculateAverages(block);
 
-                    txtData.push(`Practice_Rounds_${blockStart}-${blockEnd}: Average Accuracy ${blockData.avgAccuracy}%`);
+                    txtData.push(`${practicePhaseName.replace(' ','_')}_Rounds_${blockStart}-${blockEnd}: Average Accuracy ${blockData.avgAccuracy}%`);
                 }
                 
                 // Overall practice averages
@@ -342,8 +345,8 @@
             }
 
             
-            // --- TEST 1 (Retention) DETAILS (Overall only) ---
-            const test1PhaseName = 'Test 1 (Retention)';
+            // --- TEST 1 DETAILS (Overall only) ---
+            const test1PhaseName = 'Test 1';
             if (test1Results.length > 0) {
                 const overallTest1Data = calculateAverages(test1Results);
                 txtData.push(`\n## ${test1PhaseName.toUpperCase()} DETAILS`);
@@ -353,8 +356,8 @@
                 txtData.push(`\n## ${test1PhaseName.toUpperCase()} DETAILS: No data recorded.`);
             }
 
-            // --- TEST 2 (Transfer) DETAILS (Overall only) ---
-            const test2PhaseName = 'Test 2 (Transfer)';
+            // --- TEST 2 DETAILS (Overall only) ---
+            const test2PhaseName = 'Test 2';
             if (test2Results.length > 0) {
                 const overallTest2Data = calculateAverages(test2Results);
                 txtData.push(`\n## ${test2PhaseName.toUpperCase()} DETAILS`);
