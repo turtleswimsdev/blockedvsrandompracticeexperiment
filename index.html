@@ -96,6 +96,7 @@
         const TRIALS_PER_BLOCK = 15; 
         const TEST_PAUSE_MS = 5000; 
         const PRACTICE_AVG_BLOCK_SIZE = 10; 
+        const BREAK_TIME_MS = 5 * 60 * 1000; // 5 minutes in milliseconds
 
         const tiles = Array.from(document.querySelectorAll('.tile'));
         const phaseEl = document.getElementById('phase');
@@ -166,10 +167,13 @@
 
         async function countdownDelay(ms) {
             let seconds = Math.floor(ms / 1000);
-            const originalPhaseText = phaseEl.textContent;
+            const originalPhaseText = phaseEl.textContent.split('(Next in')[0].trim(); // Get base text before timer
 
             for (let i = seconds; i > 0; i--) {
-                phaseEl.textContent = `${originalPhaseText} (Next in ${i}s...)`;
+                const minutes = Math.floor(i / 60);
+                const secs = i % 60;
+                const timeStr = `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+                phaseEl.textContent = `${originalPhaseText} (Next in ${timeStr}...)`;
                 await delay(1000);
             }
         }
@@ -214,13 +218,27 @@
                 await nextTrial();
             }
         }));
+        
+        async function startBreakAndEnableTest2() {
+            // Disable all buttons first
+            blockedBtn.disabled = true; randomBtn.disabled = true; test1Btn.disabled = true; test2Btn.disabled = true;
+
+            updateStatus('Retention Test Complete. Starting 5-Minute Break.');
+            // Use the existing countdown delay function
+            await countdownDelay(BREAK_TIME_MS);
+
+            updateStatus('Break Over. You should now start Test 2 (Transfer).', 'Cue: -', 'Trial 0/0');
+            // Enable only Test 2
+            test2Btn.disabled = false;
+        }
 
         async function nextTrial(){
             if(mode === 'blocked' || mode === 'random'){
                 if(trialIndex >= practiceQueue.length){
-                    updateStatus('Practice complete');
-                    blockedBtn.disabled = false; randomBtn.disabled = false;
-                    test1Btn.disabled = false; test2Btn.disabled = false;
+                    updateStatus('Practice complete. You can now start Test 1.');
+                    blockedBtn.disabled = true; randomBtn.disabled = true; // Keep practice disabled
+                    test1Btn.disabled = false; // Enable Test 1
+                    test2Btn.disabled = true;  // Keep Test 2 disabled
                     mode = 'idle'; setTilesDisabled(true);
                     return;
                 }
@@ -232,13 +250,22 @@
                 isActive = true; 
             }else if(mode === 'test1' || mode === 'test2'){
                 if(trialIndex >= practiceQueue.length){ 
-                    updateStatus('Test complete');
-                    setTilesDisabled(true); 
-                    blockedBtn.disabled = false; 
-                    randomBtn.disabled = false;
-                    test1Btn.disabled = false; 
-                    test2Btn.disabled = false;
-                    mode='idle';
+                    if (mode === 'test1') {
+                        mode = 'break'; // Set mode to break before starting the countdown
+                        await startBreakAndEnableTest2();
+                        mode = 'idle'; // Set back to idle after the break/enabling test2
+                    } else { // mode === 'test2'
+                        updateStatus('Test complete');
+                        setTilesDisabled(true); 
+                        
+                        // After Test 2, enable all buttons for potential restart/viewing results
+                        blockedBtn.disabled = false; 
+                        randomBtn.disabled = false;
+                        test1Btn.disabled = false; 
+                        test2Btn.disabled = false;
+                        
+                        mode='idle';
+                    }
                     return; 
                 }
                 currentPatternKey = practiceQueue[trialIndex];
@@ -265,17 +292,20 @@
         async function startBlocked(){
             mode='blocked';
             practiceType = 'Blocked'; 
+            // Lock all buttons while practicing
             blockedBtn.disabled = true; randomBtn.disabled = true; test1Btn.disabled = true; test2Btn.disabled = true;
             practiceQueue = buildBlockedQueue(); trialIndex=0; updateStatus('Blocked practice started'); await nextTrial();
         }
         async function startRandom(){
             mode='random';
             practiceType = 'Random'; 
+            // Lock all buttons while practicing
             blockedBtn.disabled=true; randomBtn.disabled=true; test1Btn.disabled=true; test2Btn.disabled=true;
             practiceQueue = buildRandomQueue(); trialIndex=0; updateStatus('Random practice started'); await nextTrial();
         }
 
         function startTest(which){
+            // Lock all buttons while testing
             blockedBtn.disabled=true; randomBtn.disabled=true; test1Btn.disabled=true; test2Btn.disabled=true;
             if(which===1){ mode='test1'; practiceQueue = learningOrder.slice(); trialIndex=0; updateStatus('Test 1 (Retention) started'); nextTrial(); }
             else { mode='test2'; practiceQueue = ['red','yellow','blue','green']; trialIndex=0; updateStatus('Test 2 (Transfer) started'); nextTrial(); }
@@ -283,7 +313,11 @@
 
         window.resetGame = ()=>{
             mode='idle'; practiceQueue=[]; currentPatternKey=null; clickBuffer=[]; trialIndex=0; setTilesDisabled(true);
-            test1Btn.disabled = false; test2Btn.disabled = false; blockedBtn.disabled=false; randomBtn.disabled=false; 
+            // Ensure Test 1 is available and Test 2 is locked on initial load/reset
+            test1Btn.disabled = false; 
+            test2Btn.disabled = true; 
+            blockedBtn.disabled=false; 
+            randomBtn.disabled=false; 
             updateStatus('Ready'); lastSummary.textContent='-';
         };
         document.addEventListener('DOMContentLoaded', ()=>{ window.resetGame(); });
@@ -305,7 +339,7 @@
             };
         }
 
-        // --- NEW: Function to generate CLEAN results text for the popup ---
+        // --- Function to generate CLEAN results text for the popup ---
         window.generateResultsText = function(){
             if(results.length === 0){ return "No results recorded. Please complete a practice or test phase first."; }
 
@@ -376,7 +410,7 @@
             return txtData.join('\n');
         }
 
-        // --- NEW: DISPLAY FUNCTION (Shows the clean summary) ---
+        // --- DISPLAY FUNCTION (Shows the clean summary) ---
         window.displayResults = function(){
             const txtContent = window.generateResultsText();
 
