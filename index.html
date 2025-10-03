@@ -87,14 +87,14 @@
     
     <script>
         const PATTERNS = {
-            blue: { sequence: [3,6,4], colorClass: 'bg-blue-500', name:'BLUE' },
-            green: { sequence: [2,5,1], colorClass: 'bg-green-500', name:'GREEN' },
-            red: { sequence: [5,3,6], colorClass: 'bg-red-500', name:'RED' },
-            yellow: { sequence: [3,4,1], colorClass: 'bg-yellow-400', name:'YELLOW' }
+            blue: { sequence: [2,6,5], colorClass: 'bg-blue-500', name:'BLUE' },
+            green: { sequence: [4,1,3], colorClass: 'bg-green-500', name:'GREEN' },
+            red: { sequence: [6,4,3], colorClass: 'bg-red-500', name:'RED' },
+            yellow: { sequence: [1,2,5], colorClass: 'bg-yellow-400', name:'YELLOW' }
         };
 
-        const TRIALS_PER_BLOCK = 15; 
-        const TEST_PAUSE_MS = 5000; 
+        const TRIALS_PER_BLOCK = 15; 
+        const TEST_PAUSE_MS = 5000; 
         const PRACTICE_AVG_BLOCK_SIZE = 10; 
 
         const tiles = Array.from(document.querySelectorAll('.tile'));
@@ -149,14 +149,14 @@
                         const el = document.querySelector(`.tile-${b}`);
                         el.classList.add(pat.colorClass);
                         el.style.color = '#fff';
-                        await delay(500); 
+                        await delay(500); 
                         el.classList.remove(pat.colorClass);
                         el.style.color = '';
                         await delay(200);
                     }
                 }
-                isDuringCue = false; 
-                startTime = performance.now(); 
+                isDuringCue = false; 
+                startTime = performance.now(); 
                 setTilesDisabled(false);
                 resolve();
             });
@@ -189,14 +189,14 @@
                 isActive = false; setTilesDisabled(true);
                 let correct = 0; for(let i=0;i<currentExpectedSeq.length;i++){ if(clickBuffer[i] === currentExpectedSeq[i]) correct++; }
                 const score = correct / currentExpectedSeq.length;
-                const result = { 
-                    phase: mode, 
-                    trialNumber: trialIndex+1, 
-                    pattern: currentPatternKey, 
-                    expected: currentExpectedSeq, 
-                    actual: clickBuffer, 
-                    reactionTime_s: parseFloat(rt.toFixed(3)), 
-                    correct: correct, 
+                const result = { 
+                    phase: mode, 
+                    trialNumber: trialIndex+1, 
+                    pattern: currentPatternKey, 
+                    expected: currentExpectedSeq, 
+                    actual: clickBuffer, 
+                    reactionTime_s: parseFloat(rt.toFixed(3)), 
+                    correct: correct, 
                     score: score,
                     expectedLength: currentExpectedSeq.length
                 };
@@ -231,15 +231,15 @@
                 await flashSequence(currentPatternKey, true);
                 isActive = true; 
             }else if(mode === 'test1' || mode === 'test2'){
-                if(trialIndex >= practiceQueue.length){ 
+                if(trialIndex >= practiceQueue.length){ 
                     updateStatus('Test complete');
-                    setTilesDisabled(true); 
-                    blockedBtn.disabled = false; 
+                    setTilesDisabled(true); 
+                    blockedBtn.disabled = false; 
                     randomBtn.disabled = false;
-                    test1Btn.disabled = false; 
+                    test1Btn.disabled = false; 
                     test2Btn.disabled = false;
                     mode='idle';
-                    return; 
+                    return; 
                 }
                 currentPatternKey = practiceQueue[trialIndex];
                 currentExpectedSeq = PATTERNS[currentPatternKey].sequence.slice();
@@ -252,14 +252,14 @@
 
         function buildBlockedQueue(){ const q=[]; for(const p of learningOrder){ for(let i=0;i<TRIALS_PER_BLOCK;i++) q.push(p); } return q; }
         function buildRandomQueue(){
-            const q=[]; 
+            const q=[]; 
             for(const p of Object.keys(PATTERNS)){
                 for(let i=0;i<TRIALS_PER_BLOCK;i++) q.push(p);
             }
             let seed = 12345;
             function seededRandom(){ seed = (seed * 16807) % 2147483647; return (seed-1)/2147483646; }
             for(let i=q.length-1;i>0;i--){ const j = Math.floor(seededRandom()* (i+1)); [q[i],q[j]]=[q[j],q[i]]; }
-            return q; 
+            return q; 
         }
 
         async function startBlocked(){
@@ -283,7 +283,7 @@
 
         window.resetGame = ()=>{
             mode='idle'; practiceQueue=[]; currentPatternKey=null; clickBuffer=[]; trialIndex=0; setTilesDisabled(true);
-            test1Btn.disabled = false; test2Btn.disabled = false; blockedBtn.disabled=false; randomBtn.disabled=false; 
+            test1Btn.disabled = false; test2Btn.disabled = false; blockedBtn.disabled=false; randomBtn.disabled=false; 
             updateStatus('Ready'); lastSummary.textContent='-';
         };
         document.addEventListener('DOMContentLoaded', ()=>{ window.resetGame(); });
