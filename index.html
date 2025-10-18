@@ -1,66 +1,860 @@
-/**
- * Handles POST requests from the web page to receive experiment data.
- * Updated to include participant demographic fields (Full Name, Grade, Sex).
- * @param {object} e The event parameter containing data from the POST request.
- */
-function doPost(e) {
-  // Check if there is data in the POST body
-  if (!e || !e.postData || !e.postData.contents) {
-    return ContentService.createTextOutput("Error: No data received.").setMimeType(ContentService.MimeType.TEXT);
-  }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anticipation vs. Reaction Time Training</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Grayscale Theme Setup */
+        :root {
+            --color-bg-light: #f3f4f6; /* gray-100 */
+            --color-bg-mid: #e5e7eb; /* gray-200 */
+            --color-text-dark: #1f2937; /* gray-800 */
+            --color-flash-blue: #3b82f6; /* blue-500 */
+            --color-border: #9ca3af; /* gray-400 */
+        }
 
-  try {
-    // 1. Parse the JSON payload sent from the HTML application
-    const payload = JSON.parse(e.postData.contents);
-    const metadata = payload.metadata;
-    const data = payload.data;
+        html, body, #app {
+            height: 100%;
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--color-bg-light);
+            display: flex;
+            flex-direction: column;
+        }
 
-    // 2. Get the active spreadsheet and the first sheet (Sheet1)
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName("Sheet1") || ss.getSheets()[0]; 
+        /* Main Reaction Area Styling */
+        #reaction-area-container {
+            flex-grow: 1; /* Makes the container fill the remaining space */
+            padding: 1rem;
+            display: flex;
+            align-items: center; /* Center content vertically */
+            justify-content: center; /* Center content horizontally */
+            transition: all 0.3s ease-out; /* For smooth transitions */
+            user-select: none;
+            cursor: pointer;
+        }
 
-    // 3. Define the headers for consistency (must match your Sheet headers)
-    const headers = [
-      'Timestamp', 'Session ID', 'Mode Name', 'Full Name', 'Grade', 'Sex', 
-      'Round', 'Interval (ms)', 'RT (ms)', 'Success', 'False Start', 'User Agent'
-    ];
+        /* Large Clickable Box */
+        #reaction-box {
+            width: 100%;
+            height: 100%;
+            max-width: 800px; /* Max size for desktop view */
+            max-height: 80vh; /* Don't exceed screen height */
+            background-color: var(--color-bg-mid);
+            border: 4px solid var(--color-border);
+            border-radius: 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--color-text-dark);
+            font-size: 3rem;
+            font-weight: 800;
+            line-height: 1;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transition: background-color 0.1s ease-in;
+            opacity: 1; /* Start visible */
+        }
 
-    // Check if headers need to be written (only if the sheet is empty)
-    if (sheet.getLastRow() === 0) {
-      sheet.appendRow(headers);
-    }
-    
-    // 4. Iterate through the trial data and append rows
-    let rowsAdded = 0;
-    data.forEach(trial => {
-      const row = [
-        // Metadata fields (repeated for every trial in the block)
-        trial.timestamp,
-        metadata.session_id,
-        metadata.mode_name,
-        metadata.full_name, // NEW
-        metadata.grade,      // NEW
-        metadata.sex,        // NEW
+        /* Countdown Text inside the box */
+        #countdown-text {
+            font-size: 8rem;
+            color: var(--color-text-dark);
+        }
         
-        // Trial-specific fields
-        trial.round,
-        trial.interval_ms,
-        trial.rt_ms,
-        trial.success,
-        trial.is_false_start,
-        metadata.user_agent
-      ];
-      sheet.appendRow(row);
-      rowsAdded++;
-    });
+        /* Blue Flash state (Cue) */
+        .flash-cue {
+            background-color: var(--color-flash-blue) !important;
+            color: white !important;
+            border-color: var(--color-flash-blue) !important;
+        }
+        
+        /* Modal Styling for Results & Info */
+        .modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 100;
+        }
+        .modal-content {
+            background: white; padding: 24px; border-radius: 12px; max-width: 90%; width: 600px; max-height: 90%; overflow: auto;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        .modal-content pre {
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            background: #f1f5f9; /* gray-100 */
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0; /* gray-200 */
+        }
 
-    // 5. Return success response
-    return ContentService.createTextOutput(`Success: ${rowsAdded} rows logged.`).setMimeType(ContentService.MimeType.TEXT);
+        /* Grayscale button styling */
+        .gray-button {
+            padding: 0.5rem 1rem;
+            background-color: #374151; /* gray-700 */
+            color: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: background-color 0.15s;
+        }
+        .gray-button:hover:not(:disabled) {
+            background-color: #4b5563; /* gray-600 */
+        }
+        .gray-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+    </style>
+</head>
+<body>
+    <div id="app" class="flex flex-col h-screen">
+        
+        <!-- Status Bar (Pause/Resume, Current Status, Last Result) -->
+        <div class="bg-white border-b border-gray-200 flex items-center justify-between px-4 py-3 shadow-md relative h-16">
+            
+            <!-- Left: Pause/Resume Button (with symbols) -->
+            <button id="btn-pause-resume" class="gray-button text-2xl p-1 w-10 h-10 flex items-center justify-center bg-gray-500 hover:bg-gray-600" 
+                    onclick="window.togglePause()" disabled>
+                ⏸
+            </button>
+            
+            <!-- Center: Current Mode/Round Status -->
+            <div id="status-display" class="absolute left-1/2 transform -translate-x-1/2 text-lg font-semibold text-gray-800">Ready</div>
+            
+            <!-- Right: Last Reaction Time Result -->
+            <div class="text-right">
+                <div class="text-sm text-gray-500">Last RT:</div>
+                <div id="last-result" class="text-xl font-bold text-gray-900">-</div>
+            </div>
+        </div>
 
-  } catch (error) {
-    // Return error response
-    return ContentService.createTextOutput("Error: " + error.toString() + " | Input: " + e.postData.contents).setMimeType(ContentService.MimeType.TEXT);
-  }
-}
+        <!-- Option Buttons (Top Row) -->
+        <div class="p-3 bg-gray-50 flex gap-3 flex-wrap justify-center border-b border-gray-200">
+            <button id="btn-fixed-practice" class="gray-button" onclick="window.startGame('fixed_practice')">Training Set A</button>
+            <button id="btn-variable-practice" class="gray-button" onclick="window.startGame('variable_practice')">Training Set B</button>
+            <button id="btn-test-variable" class="gray-button" onclick="window.startGame('test_variable')">Reaction Test 1</button>
+            <button id="btn-test-fixed" class="gray-button" onclick="window.startGame('test_fixed')">Reaction Test 2</button>
+            <button id="btn-results" class="gray-button bg-gray-600 hover:bg-gray-700" onclick="window.displayResultsModal()">View Results</button>
+        </div>
+
+        <!-- Main Reaction Area -->
+        <div id="reaction-area-container" class="flex-1">
+            <div id="reaction-box">
+                <span id="countdown-text">Welcome</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Participant Info Modal (NEW) -->
+    <div id="info-modal" class="modal" style="display: flex;">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Participant Information</h2>
+            <div class="space-y-4">
+                <div>
+                    <label for="input-name" class="block text-sm font-medium text-gray-700 mb-1">Full Name (Letters Only)</label>
+                    <input type="text" id="input-name" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="John Doe">
+                    <p id="name-error" class="text-xs text-red-500 mt-1 hidden">Please enter letters and spaces only.</p>
+                </div>
+                <div>
+                    <label for="input-grade" class="block text-sm font-medium text-gray-700 mb-1">Grade Level (Number Only, 1-12)</label>
+                    <input type="number" id="input-grade" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" min="1" max="12" placeholder="e.g., 10">
+                    <p id="grade-error" class="text-xs text-red-500 mt-1 hidden">Please enter a valid number (1-12).</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Sex</label>
+                    <div class="flex space-x-4">
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="sex" value="Male" class="form-radio text-blue-600 h-4 w-4">
+                            <span class="ml-2 text-gray-700">Male</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="sex" value="Female" class="form-radio text-blue-600 h-4 w-4">
+                            <span class="ml-2 text-gray-700">Female</span>
+                        </label>
+                    </div>
+                    <p id="sex-error" class="text-xs text-red-500 mt-1 hidden">Please select an option.</p>
+                </div>
+            </div>
+            <div class="flex justify-end mt-6">
+                <button id="btn-start-experiment" class="gray-button px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed" 
+                        onclick="window.saveParticipantInfo()">
+                    Start Experiment
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Results Modal -->
+    <div id="results-modal" class="modal" onclick="this.style.display='none'">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Experiment Results</h2>
+            <pre id="results-display"></pre>
+            <p id="submission-status" class="mt-4 text-sm text-gray-600 hidden">
+                Note: Results are currently saved in your browser only.
+            </p>
+            <div class="flex justify-end mt-6">
+                <button class="w-24 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition" 
+                        onclick="document.getElementById('results-modal').style.display='none'">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // --- CONSTANTS ---
+        const FIXED_INTERVAL_MS = 3500;
+        const TEST_VARIABLE_MS = 4830;
+        const TEST_FIXED_MS = 3500;
+        const PRACTICE_ROUNDS = 30;
+        const SINGLE_ROUND = 1;
+        
+        // IMPORTANT: REPLACE THIS PLACEHOLDER URL with your Google Apps Script Web App URL
+        const GOOGLE_SCRIPT_URL = 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE'; 
+
+        // Variable Intervals (converted from seconds to milliseconds)
+        const VARIABLE_INTERVALS_MS = [
+            1840, 2190, 3970, 5320, 2780, 4260, 1370, 3440, 2550, 5750,
+            3690, 1220, 4580, 5010, 2070, 3120, 4970, 1660, 2900, 3830,
+            4330, 2450, 5190, 1080, 3570, 2360, 4810, 5440, 1930, 2680
+        ];
+
+        // --- DOM Elements ---
+        const statusDisplayEl = document.getElementById('status-display');
+        const lastResultEl = document.getElementById('last-result');
+        const reactionBoxEl = document.getElementById('reaction-box');
+        const countdownTextEl = document.getElementById('countdown-text');
+        const resultsModalEl = document.getElementById('results-modal');
+        const resultsDisplayEl = document.getElementById('results-display');
+        const allButtons = document.querySelectorAll('.gray-button');
+        const pauseResumeBtn = document.getElementById('btn-pause-resume');
+        const submissionStatusEl = document.getElementById('submission-status');
+        
+        // NEW DEMOGRAPHICS ELEMENTS
+        const infoModalEl = document.getElementById('info-modal');
+        const inputNameEl = document.getElementById('input-name');
+        const inputGradeEl = document.getElementById('input-grade');
+        const nameErrorEl = document.getElementById('name-error');
+        const gradeErrorEl = document.getElementById('grade-error');
+        const sexErrorEl = document.getElementById('sex-error');
+        const startExperimentBtn = document.getElementById('btn-start-experiment');
+        
+        // --- Game State ---
+        let results = []; // Stores all reaction time data
+        let currentTrialIndex = 0;
+        let currentIntervals = []; // Array of delay times for the current mode
+        let cueStartTime = null; // Timestamp when the cue/flash started
+        let mode = 'idle'; // 'idle', 'countdown', 'waiting', 'flashing', 'complete', 'paused'
+        let timeoutHandle = null; // To clear any pending timeouts
+        let baseStatusText = ''; // Stores the base experiment description (e.g., "Training Set A")
+        let currentSessionID = crypto.randomUUID(); // Unique ID for this session/participant's *block*
+        
+        // STATE FOR EXCLUSIVITY
+        let hasStartedFixedPractice = false;
+        let hasStartedVariablePractice = false;
+        
+        // NEW: Participant demographic information
+        let participantInfo = {
+            fullName: '',
+            grade: null,
+            sex: '' // 'Male' or 'Female'
+        };
+
+        // --- Helper function for delays ---
+
+        function delay(ms) {
+            return new Promise(resolve => {
+                timeoutHandle = setTimeout(resolve, ms);
+            });
+        }
+
+        // --- UI UTILITIES ---
+
+        function updateStatusDisplay(status, lastRT = null) {
+            statusDisplayEl.textContent = status;
+            if (lastRT !== null) {
+                lastResultEl.textContent = `${(lastRT / 1000).toFixed(3)} s`;
+            }
+        }
+
+        function setButtonsDisabled(disabled) {
+            allButtons.forEach(btn => {
+                // Keep pause/results enabled for control, but only disable/enable others based on 'disabled' flag
+                if (btn.id !== 'btn-pause-resume' && btn.id !== 'btn-results') { 
+                    btn.disabled = disabled;
+                }
+                
+                // Enforce Exclusivity Rules when the experiment is NOT running (i.e., in idle/complete mode)
+                if (!disabled) { 
+                    if (btn.id === 'btn-fixed-practice' && hasStartedVariablePractice) {
+                        btn.disabled = true;
+                    }
+                    if (btn.id === 'btn-variable-practice' && hasStartedFixedPractice) {
+                        btn.disabled = true;
+                    }
+                }
+            });
+            
+            // Specific logic for pause/resume button based on mode
+            if (mode === 'idle' || mode === 'complete') {
+                pauseResumeBtn.disabled = true;
+            } else {
+                pauseResumeBtn.disabled = false;
+            }
+            
+            // Allow viewing results if participant info is collected, even if game is idle
+            if (participantInfo.fullName) {
+                document.getElementById('btn-results').disabled = false;
+            } else {
+                document.getElementById('btn-results').disabled = true;
+            }
+        }
+        
+        function showBoxContent(html) {
+            reactionBoxEl.classList.remove('opacity-0');
+            reactionBoxEl.innerHTML = `<span id="countdown-text">${html}</span>`;
+            // Re-select the countdownTextEl since its content might be replaced
+            const newCountdownTextEl = document.getElementById('countdown-text');
+            if(newCountdownTextEl) newCountdownTextEl.textContent = html;
+        }
+
+        function hideBoxContent() {
+            reactionBoxEl.innerHTML = '';
+            reactionBoxEl.classList.add('opacity-0');
+        }
+
+        function startFlashCue() {
+            reactionBoxEl.classList.add('flash-cue');
+            cueStartTime = performance.now();
+            mode = 'flashing';
+        }
+
+        function stopFlashCue() {
+            reactionBoxEl.classList.remove('flash-cue');
+            cueStartTime = null;
+        }
+        
+        // --- PARTICIPANT INFO LOGIC ---
+
+        window.saveParticipantInfo = function() {
+            let isValid = true;
+            
+            // 1. Name Validation (Letters and spaces only)
+            const nameValue = inputNameEl.value.trim();
+            // Regex: only allows letters (a-z, A-Z) and spaces. Must not be empty.
+            if (!/^[a-zA-Z\s]+$/.test(nameValue) || nameValue === '') {
+                nameErrorEl.classList.remove('hidden');
+                isValid = false;
+            } else {
+                nameErrorEl.classList.add('hidden');
+            }
+
+            // 2. Grade Validation (Number between 1 and 12)
+            const gradeValue = parseInt(inputGradeEl.value);
+            if (isNaN(gradeValue) || gradeValue < 1 || gradeValue > 12) {
+                gradeErrorEl.classList.remove('hidden');
+                isValid = false;
+            } else {
+                gradeErrorEl.classList.add('hidden');
+            }
+
+            // 3. Sex Validation
+            const sexEl = document.querySelector('input[name="sex"]:checked');
+            const sexValue = sexEl ? sexEl.value : '';
+            if (sexValue === '') {
+                sexErrorEl.classList.remove('hidden');
+                isValid = false;
+            } else {
+                sexErrorEl.classList.add('hidden');
+            }
+
+            if (isValid) {
+                participantInfo.fullName = nameValue;
+                participantInfo.grade = gradeValue;
+                participantInfo.sex = sexValue;
+                
+                // Hide the modal and enable the experiment buttons
+                infoModalEl.style.display = 'none';
+                setButtonsDisabled(false);
+                updateStatusDisplay(`Welcome, ${participantInfo.fullName}. Please select a training set.`);
+            }
+        }
+
+        function showInfoModal() {
+            infoModalEl.style.display = 'flex';
+            // Disable all experiment buttons until info is collected
+            document.getElementById('btn-fixed-practice').disabled = true;
+            document.getElementById('btn-variable-practice').disabled = true;
+            document.getElementById('btn-test-variable').disabled = true;
+            document.getElementById('btn-test-fixed').disabled = true;
+            document.getElementById('btn-results').disabled = true;
+            pauseResumeBtn.disabled = true;
+            startExperimentBtn.disabled = false; 
+        }
+
+        // --- PAUSE/RESUME LOGIC (Restart Round) ---
+
+        window.togglePause = function() {
+            if (mode === 'paused') {
+                resumeGame();
+            } else if (mode === 'countdown' || mode === 'waiting' || mode === 'flashing') {
+                pauseGame();
+            }
+        }
+
+        function pauseGame() {
+            if (mode === 'paused' || mode === 'idle' || mode === 'complete') return;
+
+            clearTimeout(timeoutHandle); // Stop any pending timeouts
+            
+            mode = 'paused';
+            pauseResumeBtn.textContent = '▶'; // Change to Resume symbol
+            updateStatusDisplay(`${baseStatusText} (PAUSED)`);
+            showBoxContent('PAUSED');
+            setButtonsDisabled(true); // Disable all except resume/results
+        }
+
+        async function resumeGame() {
+            if (mode !== 'paused') return;
+
+            // Set mode explicitly to prevent startRound from immediately returning.
+            mode = 'countdown'; 
+            
+            pauseResumeBtn.textContent = '⏸'; // Change to Pause symbol
+            setButtonsDisabled(false); // Enable buttons for the restarting round flow
+            
+            // Start the round again from the countdown (3, 2, 1)
+            startRound(); 
+        }
+
+        async function continueIntervalWait() {
+            const intervalToUse = currentIntervals[currentTrialIndex];
+            if (intervalToUse === undefined) {
+                console.error("Interval is undefined. Exiting.");
+                return;
+            }
+            
+            const currentRound = currentTrialIndex + 1;
+            const totalRounds = currentIntervals.length;
+            const roundText = `(Round ${currentRound}/${totalRounds})`;
+
+            // Update: Preserve base status when setting 'Waiting' status
+            updateStatusDisplay(`${baseStatusText} ${roundText} (Waiting for Cue...)`);
+            hideBoxContent(); // Hide content during the delay
+            mode = 'waiting';
+
+            await delay(intervalToUse);
+            if (mode === 'paused') return; // Check if paused during the delay
+
+            startFlashCue();
+            // Update: Preserve base status when setting 'CLICK NOW!' status
+            updateStatusDisplay(`${baseStatusText} ${roundText} (CLICK NOW!)`);
+            
+            // Set a long timeout to automatically record a 'MISSED' trial if user is too slow
+            timeoutHandle = setTimeout(() => {
+                handleReaction(false); 
+            }, 10000); // 10 second maximum reaction time
+        }
+
+        // --- CORE GAME LOGIC ---
+
+        window.startGame = function(newMode) {
+            if (mode !== 'idle' && mode !== 'complete') return;
+            
+            // Block start if participant info hasn't been saved (shouldn't happen if info modal is working)
+            if (!participantInfo.fullName) { 
+                showInfoModal(); 
+                return;
+            }
+
+            // Generate a new unique ID for the session when a new game starts
+            currentSessionID = crypto.randomUUID(); 
+
+            // Clear previous state and setup for new run
+            clearTimeout(timeoutHandle);
+            currentTrialIndex = 0;
+            mode = 'countdown';
+            setButtonsDisabled(true); // Disable buttons while running
+            stopFlashCue();
+            
+            // Determine the intervals and set the base status text
+            switch (newMode) {
+                case 'fixed_practice':
+                    currentIntervals = Array(PRACTICE_ROUNDS).fill(FIXED_INTERVAL_MS);
+                    baseStatusText = `Training Set A`; 
+                    updateStatusDisplay(`${baseStatusText} (Round 1/${PRACTICE_ROUNDS})`);
+                    hasStartedFixedPractice = true; // Set exclusivity flag
+                    break;
+                case 'variable_practice':
+                    currentIntervals = VARIABLE_INTERVALS_MS.slice(); // Use a copy
+                    currentIntervals.sort(() => Math.random() - 0.5); // Randomize intervals
+                    baseStatusText = `Training Set B`; 
+                    updateStatusDisplay(`${baseStatusText} (Round 1/${PRACTICE_ROUNDS})`);
+                    hasStartedVariablePractice = true; // Set exclusivity flag
+                    break;
+                case 'test_variable':
+                    currentIntervals = Array(SINGLE_ROUND).fill(TEST_VARIABLE_MS);
+                    baseStatusText = `Reaction Test 1: Novel Time`;
+                    updateStatusDisplay(`${baseStatusText} (Round 1/1)`);
+                    break;
+                case 'test_fixed':
+                    currentIntervals = Array(SINGLE_ROUND).fill(TEST_FIXED_MS);
+                    baseStatusText = `Reaction Test 2: Trained Time`;
+                    updateStatusDisplay(`${baseStatusText} (Round 1/1)`);
+                    break;
+                default:
+                    return; // Should not happen
+            }
+
+            // Store the mode type for result tracking
+            reactionBoxEl.dataset.mode = newMode;
+            pauseResumeBtn.textContent = '⏸'; // Reset pause button symbol
+            pauseResumeBtn.disabled = false;
+            
+            // Reset submission status on start
+            submissionStatusEl.textContent = 'Note: Results are currently saved in your browser only.';
+            submissionStatusEl.classList.remove('text-green-600', 'text-red-600');
+
+
+            // Start the first round
+            startRound();
+        }
+
+        function restartRound() {
+            // Only used for the anti-cheating mechanism (False Start)
+            if (mode === 'idle' || mode === 'complete') return;
+            clearTimeout(timeoutHandle);
+            stopFlashCue();
+            // Start round resets the mode and status to the correct countdown state
+            startRound(); 
+        }
+        
+        async function startRound() {
+            if (mode === 'paused') return; // Do not proceed if paused
+            
+            const currentRound = currentTrialIndex + 1;
+            const totalRounds = currentIntervals.length;
+            const roundText = `(Round ${currentRound}/${totalRounds})`;
+
+            try {
+                // 1. Countdown Phase (3, 2, 1, GO!)
+                mode = 'countdown';
+                for (let i = 3; i > 0; i--) {
+                    if (mode === 'paused') return; // Check pause state after each delay
+                    // Ensure status is correctly set on resume/restart before showing countdown number
+                    updateStatusDisplay(`${baseStatusText} ${roundText}`); 
+                    showBoxContent(i);
+                    await delay(1000);
+                }
+                if (mode === 'paused') return;
+                
+                // Final Countdown text is "GO!"
+                updateStatusDisplay(`${baseStatusText} ${roundText}`);
+                showBoxContent('GO!');
+                await delay(1000); // 1 second for "GO!"
+                if (mode === 'paused') return;
+                
+                // 2. Interval Wait Phase
+                await continueIntervalWait(); // This will handle setting 'waiting' mode and cue
+                
+            } catch (error) {
+                console.error("Round failed:", error);
+                if (mode !== 'complete' && mode !== 'paused') {
+                    updateStatusDisplay("Error occurred. Restarting.");
+                    resetGame();
+                }
+            }
+        }
+        
+        // Unified function to handle reaction (click or spacebar)
+        function handleReactionInput(currentTime) {
+            if (mode === 'paused') return; 
+
+            if (mode === 'flashing') {
+                // SUCCESSFUL REACTION
+                clearTimeout(timeoutHandle);
+                const rt_ms = currentTime - cueStartTime;
+                handleReaction(true, rt_ms);
+            } else if (mode === 'waiting' || mode === 'countdown') {
+                // FALSE START / EARLY INPUT (Anti-cheating)
+                const currentRound = currentTrialIndex + 1;
+                const totalRounds = currentIntervals.length;
+                
+                // Use the structured base status text for the temporary feedback
+                const falseStartStatus = `${baseStatusText} (Round ${currentRound}/${totalRounds}) (FALSE START!)`;
+                updateStatusDisplay(falseStartStatus); 
+
+                // Briefly flash the box red/gray for feedback before restarting
+                reactionBoxEl.classList.add('bg-red-400'); 
+                setTimeout(() => {
+                    reactionBoxEl.classList.remove('bg-red-400');
+                    restartRound();
+                }, 500);
+            }
+        }
+
+        // Event Listener for MOUSE Clicks on the reaction area
+        reactionBoxEl.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return; // Only process left-click
+            handleReactionInput(performance.now());
+        });
+        
+        // Event Listener for SPACEBAR (NEW)
+        window.addEventListener('keydown', (e) => {
+            // Check if the spacebar was pressed and not in an input field (so it doesn't interfere with forms)
+            if (e.code === 'Space' && 
+                document.activeElement.tagName !== 'INPUT' && 
+                document.activeElement.tagName !== 'BUTTON') { 
+                
+                e.preventDefault(); // Prevent default spacebar action (like scrolling)
+                handleReactionInput(performance.now());
+            }
+        });
+
+        function handleReaction(isSuccess, rt_ms = 0) {
+            stopFlashCue();
+            const currentMode = reactionBoxEl.dataset.mode;
+            
+            const result = {
+                // Added Session ID and Timestamp for data collection integrity
+                session_id: currentSessionID, // Use the current block's ID
+                timestamp: new Date().toISOString(), 
+                mode: currentMode,
+                round: currentTrialIndex + 1,
+                interval_ms: currentIntervals[currentTrialIndex], // Keep for experimenter data
+                rt_ms: isSuccess ? Math.round(rt_ms) : null,
+                success: isSuccess,
+                is_false_start: !isSuccess && mode !== 'flashing', 
+            };
+            results.push(result);
+            
+            const roundNumber = currentTrialIndex + 1; // Current round number
+            const totalRounds = currentIntervals.length;
+            const rtDisplay = isSuccess ? result.rt_ms : 0;
+            
+            // 1. Display Result for JUST finished Round
+            let completionStatus;
+            if (isSuccess) {
+                completionStatus = `(Round ${roundNumber}/${totalRounds}) (Complete!)`;
+            } else {
+                completionStatus = `(Round ${roundNumber}/${totalRounds}) (MISSED! Clicked too late.)`;
+            }
+            // Update status with the result and RT
+            updateStatusDisplay(`${baseStatusText} ${completionStatus}`, rtDisplay);
+            
+            currentTrialIndex++;
+
+            if (currentTrialIndex < currentIntervals.length) {
+                // Schedule NEXT round. startRound will handle the status update for the countdown.
+                setTimeout(startRound, 1500); 
+            } else {
+                // Phase Complete
+                mode = 'complete';
+                updateStatusDisplay(`Mode Complete! ${currentTrialIndex} trials recorded.`, rtDisplay);
+                setButtonsDisabled(false); // Re-enable buttons, pause is now disabled
+                showBoxContent('DONE!');
+
+                // --- AUTOMATED SUBMISSION TRIGGER ---
+                autoSubmitBlock(currentSessionID);
+                // --- END AUTOMATED SUBMISSION ---
+            }
+        }
+
+        // --- RESULTS HANDLING & AUTOMATED SUBMISSION ---
+
+        /**
+         * Automatically sends the results for the completed block to the Google Sheet.
+         * @param {string} sessionId The ID of the block that just finished.
+         */
+        async function autoSubmitBlock(sessionId) {
+            const hasScriptUrl = GOOGLE_SCRIPT_URL !== 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE';
+            
+            // Filter the global results array to only get the data from the just-completed block
+            const blockResults = results.filter(r => r.session_id === sessionId);
+
+            if (!hasScriptUrl) {
+                 submissionStatusEl.textContent = 'Submission Failed: GOOGLE_SCRIPT_URL not set. Data saved locally.';
+                 submissionStatusEl.classList.add('text-red-600');
+                 return;
+            }
+            
+            if (blockResults.length === 0) {
+                submissionStatusEl.textContent = 'Warning: Block completed but no new data to submit.';
+                submissionStatusEl.classList.add('text-red-600');
+                return;
+            }
+
+
+            submissionStatusEl.textContent = `Auto-submitting ${blockResults.length} trial(s) from ${baseStatusText}...`;
+            submissionStatusEl.classList.remove('text-green-600', 'text-red-600');
+            
+            // Add a brief delay so the user can see the "DONE!" message before the submission status updates
+            await delay(100); 
+
+            try {
+                // Prepare the payload for submission
+                const payload = {
+                    metadata: {
+                        submission_time: new Date().toISOString(),
+                        session_id: sessionId,
+                        mode_name: baseStatusText,
+                        user_agent: navigator.userAgent,
+                        // NEW: Participant demographics added to metadata
+                        full_name: participantInfo.fullName,
+                        grade: participantInfo.grade,
+                        sex: participantInfo.sex
+                    },
+                    data: blockResults
+                };
+
+                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors', // Required for Google Apps Script to avoid CORS issues
+                    cache: 'no-cache',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                // Since we use 'no-cors', we rely on the fetch succeeding to indicate the script was called.
+                submissionStatusEl.textContent = `✅ Successfully submitted ${baseStatusText} results to Google Sheet.`;
+                submissionStatusEl.classList.remove('text-red-600');
+                submissionStatusEl.classList.add('text-green-600');
+
+            } catch (error) {
+                console.error('Submission failed:', error);
+                submissionStatusEl.textContent = `❌ Submission failed for ${baseStatusText}. Check console. Data is saved locally.`;
+                submissionStatusEl.classList.remove('text-green-600');
+                submissionStatusEl.classList.add('text-red-600');
+            }
+        }
+
+        window.displayResultsModal = function() {
+            if (!participantInfo.fullName) {
+                showInfoModal();
+                return;
+            }
+            
+            resultsDisplayEl.textContent = generateResultsText();
+            resultsModalEl.style.display = 'flex';
+            
+            // Update submission status for the modal view based on current state
+            if (results.length === 0) {
+                 submissionStatusEl.textContent = 'No trials have been completed yet.';
+                 submissionStatusEl.classList.remove('text-red-600', 'text-green-600');
+            } else if (submissionStatusEl.textContent.includes('Successfully submitted')) {
+                // Do nothing if it already shows success from the auto-submit
+            } else if (GOOGLE_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE') {
+                 submissionStatusEl.textContent = 'Data submission is disabled. Please set the GOOGLE_SCRIPT_URL constant in the code.';
+                 submissionStatusEl.classList.add('text-red-600');
+            } else {
+                 submissionStatusEl.textContent = 'Results are saved in your browser. Automatic submission is pending block completion.';
+                 submissionStatusEl.classList.remove('text-red-600', 'text-green-600');
+            }
+            submissionStatusEl.classList.remove('hidden');
+        }
+
+        function generateResultsText() {
+            if (results.length === 0) {
+                return "No trials have been completed yet. Please run a training set or test first.";
+            }
+
+            const modeMap = {
+                fixed_practice: 'Training Set A',
+                variable_practice: 'Training Set B',
+                test_variable: 'Reaction Test 1 (4.83s Novel)',
+                test_fixed: 'Reaction Test 2 (3.5s Trained)',
+            };
+
+            let output = `--- Experiment Results Summary (${new Date().toLocaleString()}) ---\n`;
+            output += `Participant: ${participantInfo.fullName} (Grade: ${participantInfo.grade}, Sex: ${participantInfo.sex})\n\n`;
+
+            // Group results by mode
+            const groupedResults = results.reduce((acc, result) => {
+                acc[result.mode] = acc[result.mode] || [];
+                acc[result.mode].push(result);
+                return acc;
+            }, {});
+
+            // Iterate over each mode
+            for (const modeKey in groupedResults) {
+                const data = groupedResults[modeKey];
+                const modeName = modeMap[modeKey] || modeKey;
+                const successfulRTs = data
+                    .filter(d => d.success && d.rt_ms !== null)
+                    .map(d => d.rt_ms);
+
+                const avgRT = successfulRTs.length > 0 ? (successfulRTs.reduce((sum, rt) => sum + rt, 0) / successfulRTs.length) : 0;
+                
+                output += `=====================================\n`;
+                output += `Mode: ${modeName}\n`;
+                output += `Total Trials: ${data.length}\n`;
+                output += `Successful Clicks: ${successfulRTs.length}\n`;
+                output += `Average RT: ${avgRT.toFixed(3)} ms\n`;
+                output += `\nTrial-by-Trial Data (RT in milliseconds):\n`;
+                output += `-------------------------------------\n`;
+
+                data.forEach(d => {
+                    const rt_display = d.success && d.rt_ms !== null ? d.rt_ms.toFixed(0) : 
+                                       d.is_false_start ? 'FALSE START' : 'MISSED';
+                    // UPDATED: Removed interval display
+                    output += `Round ${d.round}: RT=${rt_display}\n`; 
+                });
+                output += '\n';
+            }
+
+            return output;
+        }
+
+        // --- INITIALIZATION ---
+
+        function resetGame() {
+            // This function is for initial setup and general cleanup
+            mode = 'idle';
+            currentTrialIndex = 0;
+            currentIntervals = [];
+            cueStartTime = null;
+            clearTimeout(timeoutHandle);
+            stopFlashCue();
+            updateStatusDisplay("Ready to begin experiment.");
+            lastResultEl.textContent = '-';
+            showBoxContent('Welcome');
+            pauseResumeBtn.textContent = '⏸'; // Set initial symbol
+            pauseResumeBtn.disabled = true; // Initially disabled until a game starts
+            
+            // Set initial submission status
+            if (GOOGLE_SCRIPT_URL !== 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE') {
+                 submissionStatusEl.textContent = 'Submission is enabled and will occur automatically upon mode completion.';
+                 submissionStatusEl.classList.add('text-green-600');
+            } else {
+                 submissionStatusEl.textContent = 'Warning: GOOGLE_SCRIPT_URL placeholder is set. Data will not be submitted.';
+                 submissionStatusEl.classList.add('text-red-600');
+            }
+            submissionStatusEl.classList.remove('hidden');
+            
+            // NEW: Show info modal if data hasn't been collected
+            if (!participantInfo.fullName) {
+                showInfoModal();
+            } else {
+                // Only enable buttons if info is collected (and apply exclusivity checks)
+                setButtonsDisabled(false);
+            }
+        }
+        
+        // --- Randomize Variable Intervals on Load ---
+        // Ensure variable intervals are randomized once at the start
+        VARIABLE_INTERVALS_MS.sort(() => Math.random() - 0.5);
+
+        // Start the game in a clean state once the page loads
+        document.addEventListener('DOMContentLoaded', resetGame);
+        
+    </script>
+</body>
+</html>
 
 
