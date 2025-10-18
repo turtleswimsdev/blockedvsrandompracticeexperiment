@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -206,6 +205,10 @@
         let timeoutHandle = null; // To clear any pending timeouts
         let baseStatusText = ''; // Stores the base experiment description (e.g., "Training Set A")
         let currentSessionID = crypto.randomUUID(); // Unique ID for this session/participant's *block*
+        
+        // NEW STATE FOR EXCLUSIVITY
+        let hasStartedFixedPractice = false;
+        let hasStartedVariablePractice = false;
 
         // --- Helper function for delays ---
 
@@ -230,7 +233,18 @@
                 if (btn.id !== 'btn-pause-resume' && btn.id !== 'btn-results') { 
                     btn.disabled = disabled;
                 }
+                
+                // Enforce Exclusivity Rules when the experiment is NOT running (i.e., in idle/complete mode)
+                if (!disabled) { 
+                    if (btn.id === 'btn-fixed-practice' && hasStartedVariablePractice) {
+                        btn.disabled = true;
+                    }
+                    if (btn.id === 'btn-variable-practice' && hasStartedFixedPractice) {
+                        btn.disabled = true;
+                    }
+                }
             });
+            
             // Specific logic for pause/resume button based on mode
             if (mode === 'idle' || mode === 'complete') {
                 pauseResumeBtn.disabled = true;
@@ -348,11 +362,13 @@
                     currentIntervals = Array(PRACTICE_ROUNDS).fill(FIXED_INTERVAL_MS);
                     baseStatusText = `Training Set A`; 
                     updateStatusDisplay(`${baseStatusText} (Round 1/${PRACTICE_ROUNDS})`);
+                    hasStartedFixedPractice = true; // Set exclusivity flag
                     break;
                 case 'variable_practice':
                     currentIntervals = VARIABLE_INTERVALS_MS.slice(); // Use a copy
                     baseStatusText = `Training Set B`; 
                     updateStatusDisplay(`${baseStatusText} (Round 1/${PRACTICE_ROUNDS})`);
+                    hasStartedVariablePractice = true; // Set exclusivity flag
                     break;
                 case 'test_variable':
                     currentIntervals = Array(SINGLE_ROUND).fill(TEST_VARIABLE_MS);
@@ -671,6 +687,9 @@
                  submissionStatusEl.classList.add('text-red-600');
             }
             submissionStatusEl.classList.remove('hidden');
+            
+            // Apply initial exclusivity check (in case they navigated back or reloaded)
+            setButtonsDisabled(false);
         }
 
         // Start the game in a clean state once the page loads
@@ -679,6 +698,3 @@
     </script>
 </body>
 </html>
-
-
-
