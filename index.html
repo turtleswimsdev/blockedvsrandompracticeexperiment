@@ -99,7 +99,8 @@
             <button id="btn-test-fixed" class="btn-mode bg-gray-700 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-200 disabled:opacity-50">
                 Reaction Test 2
             </button>
-            <button id="btn-results" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-200">
+            <!-- RESULTS BUTTON - Added 'db-status-btn' class for visual feedback -->
+            <button id="btn-results" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-200 db-status-btn">
                 View Historical Results
             </button>
         </div>
@@ -222,16 +223,39 @@
         
         // --- Game Setup ---
         let app, db, auth, userId = null;
+        let isAuthReady = false; // New flag to track readiness
 
         // NOTE: --- THE APPS SCRIPT WEB APP URL MUST GO HERE (Step 5) ---
         // Replace this empty string with the URL you get after deployment.
-        const GAS_WEB_APP_URL = "https://script.google.com/a/macros/mycw.org/s/AKfycbyYV_kRfMGX6J1KTkKWcw9c-6kvgaa_o7XTfcnBcVd9edj8k8Ts0dA1hD7yVM50mySpbQ/exec"; 
+        const GAS_WEB_APP_URL = ""; 
         
+        // --- DOM Elements for Status ---
+        const btnResults = document.getElementById('btn-results');
+        
+        /**
+         * Updates the visual status of the results button to show connection state.
+         * @param {boolean} ready - True if Firebase is connected and authenticated.
+         */
+        function updateResultsButtonStatus(ready) {
+            if (ready) {
+                btnResults.classList.remove('animate-pulse', 'bg-gray-400', 'hover:bg-gray-400');
+                btnResults.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                btnResults.textContent = 'View Historical Results';
+            } else {
+                btnResults.classList.add('animate-pulse', 'bg-gray-400', 'hover:bg-gray-400');
+                btnResults.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                btnResults.textContent = 'Connecting...';
+            }
+        }
+
+
         // --- Firebase Initialization ---
         async function initFirebase() {
+            updateResultsButtonStatus(false);
             try {
                 if (Object.keys(firebaseConfig).length === 0) {
                     console.error("Firebase config is missing or empty. Data will not persist across sessions.");
+                    updateResultsButtonStatus(true); // Treat as ready but non-functional
                     return;
                 }
                 
@@ -253,10 +277,14 @@
                         userId = crypto.randomUUID(); 
                         console.warn("User not authenticated. Using random UUID for user ID.");
                     }
+                    isAuthReady = true; // Set flag when auth is resolved
+                    updateResultsButtonStatus(true); // Update button appearance
                 });
             } catch (error) {
                 console.error("Error initializing Firebase or signing in:", error);
                 userId = crypto.randomUUID(); // Fallback
+                isAuthReady = true; // Still mark as ready so the button state clears
+                updateResultsButtonStatus(true);
             }
         }
         
@@ -305,7 +333,7 @@
         window.sendToAppsScript = async function(data) {
             const status = document.getElementById('export-status');
             
-            if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL === "") {
+            if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL === "https://script.google.com/a/macros/mycw.org/s/AKfycbyYV_kRfMGX6J1KTkKWcw9c-6kvgaa_o7XTfcnBcVd9edj8k8Ts0dA1hD7yVM50mySpbQ/exec") {
                 console.error("GAS_WEB_APP_URL is not set. Data not sent to Google Sheet.");
                 status.textContent = 'ERROR: Apps Script URL not set. Data NOT saved to Google Sheet.';
                 status.className = 'p-3 mb-4 text-sm font-semibold rounded-lg bg-red-100 text-red-700';
@@ -369,7 +397,8 @@
             // CRITICAL FIX: Show modal immediately so the user knows the button press registered
             document.getElementById('results-modal').classList.remove('hidden');
 
-            if (!db || !userId) {
+            // CRITICAL CHECK: Use the isAuthReady flag
+            if (!isAuthReady || !db || !userId) {
                 console.error("Database not initialized or User ID not set. Cannot view results.");
                 loadingMessage.textContent = 'Error: Database connection not ready. Please wait a moment and try again.';
                 loadingMessage.classList.remove('hidden');
@@ -535,7 +564,7 @@
         const btnVariablePractice = document.getElementById('btn-variable-practice');
         const btnTestVariable = document.getElementById('btn-test-variable');
         const btnTestFixed = document.getElementById('btn-test-fixed');
-        const btnResults = document.getElementById('btn-results');
+        // Note: btnResults is defined in the type="module" block now
         const fullNameInput = document.getElementById('full-name');
         const nameErrorDisplay = document.getElementById('name-error');
 
@@ -934,9 +963,15 @@
 
         btnPauseResume.addEventListener('click', togglePause);
 
-        btnResults.addEventListener('click', () => {
-            window.showAllHistoricalResults();
+        // Note: btnResults is defined in the type="module" block now
+        // and its click listener is added inside there to ensure scope access to updateResultsButtonStatus
+        // We will now call window.showAllHistoricalResults() from here as it is globally scoped.
+
+        // Listener for the global click handler on the results button
+        document.getElementById('btn-results').addEventListener('click', () => {
+             window.showAllHistoricalResults();
         });
+
 
         reactionBox.addEventListener('click', window.handleReaction);
 
@@ -980,4 +1015,3 @@
     </script>
 </body>
 </html>
-
