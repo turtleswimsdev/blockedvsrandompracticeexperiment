@@ -1,37 +1,31 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- 1. Page Title -->
     <title>Anticipation vs. Reaction Time Training</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* 2.A. Color Variables (Custom CSS) */
+        /* 2.A. Color Variables */
         :root {
             --color-bg-light: #f3f4f6; /* gray-100 */
             --color-bg-mid: #e5e7eb; /* gray-200 */
             --color-text-dark: #1f2937; /* gray-800 */
-            --color-flash-blue: #3b82f6; /* blue-500 - Note: This is still used for the cue flash color */
+            --color-flash-blue: #3b82f6; /* blue-500 */
             --color-border: #9ca3af; /* gray-400 */
         }
 
         /* 2.B. Reaction Box and Text Styling */
         #reaction-box {
-            /* 17. Size & Constraint */
             width: 100%;
             height: 100%;
             max-width: 800px;
             max-height: 80vh; 
-            /* 18. Default Style */
             background-color: var(--color-bg-mid);
             border: 4px solid var(--color-border);
             border-radius: 1rem;
-            /* 19. Shadow */
             box-shadow: 0 10px 15px 3px rgba(0, 0, 0, 0.1), 0 4px 6px 2px rgba(0, 0, 0, 0.05);
-            /* 20. Default Content Text */
             font-size: 3rem;
             font-weight: 800;
             color: var(--color-text-dark);
@@ -42,17 +36,13 @@
 
         /* 2.C. Blue Cue State (.flash-cue) */
         .flash-cue {
-            /* 23. background-color */
             background-color: var(--color-flash-blue) !important; 
-            /* 24. color */
             color: white !important; 
-            /* 25. border-color */
             border-color: var(--color-flash-blue) !important;
         }
 
-        /* 21. Countdown Text Size - Sizing Fix Implemented Here */
+        /* 21. Countdown Text Size */
         #countdown-text {
-            /* Default font size is now consistently 3rem (smaller) */
             font-size: 3rem; 
             min-width: 500px; 
             display: inline-block;
@@ -71,18 +61,18 @@
 </head>
 <body class="flex flex-col h-screen">
 
-    <!-- 2.B. Status Bar (h-16) -->
+    <!-- Status Bar -->
     <header class="h-16 flex items-center justify-between px-6 z-10 bg-white border-b border-gray-200 shadow-md relative">
         <div id="last-rt-display" class="text-sm font-semibold text-gray-600">
             Last RT: -- ms
         </div>
 
-        <!-- 12. Center Status (#status-display) -->
+        <!-- Center Status -->
         <div id="status-display" class="text-lg font-bold text-gray-800 absolute left-1/2 transform -translate-x-1/2">
             Ready
         </div>
 
-        <!-- 13. Pause/Resume Button (#btn-pause-resume) -->
+        <!-- Pause/Resume Button -->
         <button id="btn-pause-resume" 
                 class="w-10 h-10 text-2xl bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition duration-150 shadow-inner disabled:opacity-50"
                 disabled
@@ -93,7 +83,7 @@
 
     <!-- Options Bar -->
     <nav id="options-bar" class="p-3 bg-gray-50 border-b border-gray-200">
-        <!-- 15. Button Layout -->
+        <!-- Button Layout -->
         <div class="flex gap-3 flex-wrap justify-center">
             
             <!-- Training & Test Buttons -->
@@ -109,33 +99,31 @@
             <button id="btn-test-fixed" class="btn-mode bg-gray-700 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-200 disabled:opacity-50">
                 Reaction Test 2
             </button>
+            <!-- RESULTS BUTTON - Now enabled by default and renamed -->
             <button id="btn-results" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-200">
                 View Results
             </button>
         </div>
     </nav>
 
-    <!-- 16. Reaction Area Container -->
+    <!-- Reaction Area Container -->
     <main id="reaction-area-container" class="flex-1 flex items-center justify-center p-4">
         <!-- Reaction Box -->
         <div id="reaction-box" class="flex items-center justify-center text-center p-8" onclick="window.handleReaction(event)">
-            <!-- 44. Initial Content Text -->
+            <!-- Initial Content Text -->
             <span id="countdown-text">Welcome</span>
         </div>
     </main>
 
-    <!-- Results Modal (Hidden) - Updated to a Single View -->
+    <!-- Results Modal (Hidden) -->
     <div id="results-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4">
-        <!-- Main Content Panel (Full Width and Height) -->
+        <!-- Main Content Panel -->
         <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
             
             <h2 class="text-2xl font-bold mb-4 border-b pb-2 text-gray-800">
                 All Historical Session Results
             </h2>
             
-            <!-- Export Status Display -->
-            <div id="export-status" class="hidden p-3 mb-4 text-sm font-semibold rounded-lg"></div>
-
             <!-- Main Content Area -->
             <div id="session-details-content" class="text-sm flex-1 overflow-y-auto">
                 
@@ -173,42 +161,38 @@
                 </div>
                 
             </div>
-            <!-- Close Button -->
-            <div class="mt-auto pt-4 border-t flex justify-between">
-                <!-- UPDATED EXPORT BUTTON to call the CSV download function -->
-                <button id="btn-export-data" 
-                        onclick="window.downloadResultsAsCSV()" 
-                        class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 disabled:opacity-50" 
-                        disabled>
-                    Download Data as CSV
+            <!-- Modal Footer with Download and Close Buttons -->
+            <div class="mt-auto pt-4 border-t flex justify-between items-center">
+                <!-- Download Button -->
+                <button id="btn-download-csv" onclick="window.downloadCSV()" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 disabled:opacity-50" disabled>
+                    Download as CSV
                 </button>
-
+                <!-- Close Button -->
                 <button onclick="document.getElementById('results-modal').classList.add('hidden')" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg transition duration-200">Close</button>
             </div>
         </div>
     </div>
 
-    <!-- 2. Initial State: Participant Information Modal -->
+    <!-- Initial State: Participant Information Modal -->
     <div id="info-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center">
         <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
-            <!-- 50. Info Modal Title -->
+            <!-- Info Modal Title -->
             <h2 class="text-2xl font-bold mb-6">Participant Information</h2>
             <form id="participant-form">
                 <div class="mb-4">
-                    <!-- 51. Info Modal Name Label - UPDATED: Removed descriptive text -->
+                    <!-- Info Modal Name Label -->
                     <label for="full-name" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                     <input type="text" id="full-name" name="fullName" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-blue-500 focus:border-blue-500">
-                    <!-- UPDATED: Added dedicated error display -->
                     <div id="name-error" class="text-red-500 text-xs mt-1 hidden" role="alert"></div>
                 </div>
                 <div class="mb-4">
-                    <!-- 52. Info Modal Grade Label -->
+                    <!-- Info Modal Grade Label -->
                     <label for="grade-level" class="block text-sm font-medium text-gray-700 mb-1">Grade Level (Number Only, 1-12)</label>
                     <input type="number" id="grade-level" name="gradeLevel" min="1" max="12" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-blue-500 focus:border-blue-500">
                 </div>
                 <div class="mb-6">
                     <span class="block text-sm font-medium text-gray-700 mb-2">Sex</span>
-                    <!-- 53. Info Modal Sex Options -->
+                    <!-- Info Modal Sex Options -->
                     <div class="flex space-x-4">
                         <label class="inline-flex items-center">
                             <input type="radio" name="sex" value="Male" required class="form-radio h-4 w-4 text-blue-600">
@@ -220,7 +204,7 @@
                         </label>
                     </div>
                 </div>
-                <!-- 54. Info Modal Button -->
+                <!-- Info Modal Button -->
                 <button id="btn-start-experiment" type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200 shadow-lg">
                     Start Experiment
                 </button>
@@ -228,361 +212,34 @@
         </div>
     </div>
 
-    <!-- Firebase SDKs -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, addDoc, collection, query, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // --- Global Variables (Mandatory) ---
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        
-        // --- Game Setup ---
-        let app, db, auth, userId = null;
-
-        // NEW GLOBAL: To hold fetched results temporarily for export
-        window.lastFetchedResults = []; 
-
-        // NOTE: The GAS_WEB_APP_URL is no longer needed for CSV download, but kept here for reference.
-        // const GAS_WEB_APP_URL = "YOUR_APPS_SCRIPT_WEB_APP_URL_HERE"; 
-        
-        /**
-         * Initializes Firebase and authenticates the user.
-         */
-        async function initFirebase() {
-            try {
-                if (Object.keys(firebaseConfig).length === 0) {
-                    console.error("Firebase config is missing or empty. Data will not persist across sessions.");
-                    return;
-                }
-                
-                app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
-                db = getFirestore(app);
-
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-
-                onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        console.log("Firebase authenticated. User ID:", userId);
-                    } else {
-                        userId = crypto.randomUUID(); 
-                        console.warn("User not authenticated. Using random UUID for user ID.");
-                    }
-                });
-            } catch (error) {
-                console.error("Error initializing Firebase or signing in:", error);
-                userId = crypto.randomUUID(); // Fallback
-            }
-        }
-        
-        /**
-         * Saves the current session's results to Firestore.
-         */
-        window.saveResults = async function(mode, totalRounds, results) {
-            if (!db || !userId) {
-                console.error("Database not initialized or User ID not set. Cannot save.");
-                return;
-            }
-
-            const dataToSave = {
-                appId: appId,
-                userId: userId,
-                participant: window.gameState.participant, // Save participant info with results
-                mode: mode,
-                totalRounds: totalRounds,
-                timestamp: serverTimestamp(),
-                results: results
-            };
-
-            const path = `/artifacts/${appId}/users/${userId}/results`;
-            try {
-                await addDoc(collection(db, path), dataToSave);
-                console.log("Session results saved successfully.");
-            } catch (e) {
-                console.error("Error adding document: ", e);
-            }
-        };
-
-        // Helper to format mode for display
-        function formatMode(mode) {
-            switch (mode) {
-                case 'fixed-practice':
-                    return 'Training Set A (Fixed)';
-                case 'variable-practice':
-                    return 'Training Set B (Variable)';
-                case 'variable-test':
-                    return 'Reaction Test 1 (Variable Cue)';
-                case 'fixed-test':
-                    return 'Reaction Test 2 (Fixed Cue)';
-                default:
-                    return mode;
-            }
-        }
-        
-        /**
-         * Fetches and displays ALL historical results in a single, unified view.
-         */
-        window.showAllHistoricalResults = async function() {
-            if (!db || !userId) {
-                console.error("Database not initialized or User ID not set. Cannot view results.");
-                return;
-            }
-
-            const loadingMessage = document.getElementById('results-loading-message');
-            const resultsTable = document.getElementById('results-table');
-            const resultsTableBody = document.getElementById('results-table-body');
-            const btnExport = document.getElementById('btn-export-data');
-            const exportStatus = document.getElementById('export-status');
-            
-            loadingMessage.classList.remove('hidden');
-            resultsTable.classList.add('hidden');
-            resultsTableBody.innerHTML = '';
-            btnExport.disabled = true; // Disable export until data is loaded
-            exportStatus.classList.add('hidden'); // Clear status
-
-            window.lastFetchedResults = []; // Clear previous data
-            
-            const path = `/artifacts/${appId}/users/${userId}/results`;
-            
-            try {
-                const q = query(collection(db, path));
-                const querySnapshot = await getDocs(q);
-                
-                if (querySnapshot.empty) {
-                    loadingMessage.textContent = 'No past sessions found.';
-                    document.getElementById('results-modal').classList.remove('hidden');
-                    return;
-                }
-
-                const modeOrder = {
-                    'fixed-practice': 1,
-                    'variable-practice': 1,
-                    'variable-test': 2,
-                    'fixed-test': 3
-                };
-
-                let allSessions = [];
-                querySnapshot.forEach(doc => {
-                    const data = doc.data();
-                    // Get timestamp in milliseconds for secondary chronological sorting
-                    const timestampMs = data.timestamp ? (data.timestamp.toMillis ? data.timestamp.toMillis() : 0) : 0;
-                    allSessions.push({ id: doc.id, ...data, timestampMs });
-                });
-
-                // Store data globally for export function
-                window.lastFetchedResults = allSessions; 
-                btnExport.disabled = false; // Enable export
-
-                // Sort the sessions: primarily by experiment mode order, secondarily by timestamp (oldest first)
-                allSessions.sort((a, b) => {
-                    const orderA = modeOrder[a.mode] || 99;
-                    const orderB = modeOrder[b.mode] || 99;
-                    
-                    // 1. Sort primarily by defined order (Training -> Test 1 -> Test 2)
-                    if (orderA !== orderB) {
-                        return orderA - orderB;
-                    }
-                    
-                    // 2. Secondary sort: within the same mode group, sort chronologically (oldest first)
-                    return a.timestampMs - b.timestampMs;
-                });
-
-                // --- 1. Calculate Global Summary Statistics ---
-                let totalHits = 0;
-                let totalFalseStarts = 0;
-                let totalMissed = 0;
-                let totalRounds = 0;
-                let allRts = [];
-                let participantName = allSessions[0].participant?.fullName || 'N/A';
-                
-                allSessions.forEach(session => {
-                    session.results.forEach(result => {
-                        if (result.status === 'HIT' && result.rt !== null) {
-                            allRts.push(result.rt);
-                        }
-                    });
-                    totalRounds += session.totalRounds;
-                    totalHits += session.results.filter(r => r.status === 'HIT').length;
-                    totalFalseStarts += session.results.filter(r => r.status === 'FALSE START').length;
-                    totalMissed += session.results.filter(r => r.status === 'MISSED').length;
-                });
-                
-                const overallAvgRt = allRts.length > 0 ? (allRts.reduce((a, b) => a + b, 0) / allRts.length).toFixed(0) : '--';
-
-                // --- 2. Update Summary Area ---
-                document.getElementById('participant-name').textContent = participantName; 
-                document.getElementById('results-total-sessions').textContent = allSessions.length;
-                document.getElementById('results-total-rounds').textContent = totalRounds;
-                document.getElementById('results-avg-rt').textContent = overallAvgRt;
-                document.getElementById('results-hits').textContent = totalHits;
-                document.getElementById('results-false-starts').textContent = totalFalseStarts;
-                document.getElementById('results-missed').textContent = totalMissed;
-
-                // --- 3. Populate Unified Breakdown Table ---
-                allSessions.forEach((session, sessionIndex) => {
-                    const displayMode = formatMode(session.mode);
-                    
-                    // A. Add Session Header Row 
-                    const sessionHits = session.results.filter(r => r.status === 'HIT');
-                    const sessionAvgRt = sessionHits.length > 0 ? (sessionHits.map(r => r.rt).reduce((a, b) => a + b, 0) / sessionHits.length).toFixed(0) : '--';
-                    
-                    const headerRow = resultsTableBody.insertRow();
-                    headerRow.className = 'text-sm bg-blue-100 font-bold border-t-4 border-blue-400';
-                    headerRow.innerHTML = `
-                        <td class="px-3 py-2 whitespace-nowrap" colspan="4">
-                            ${displayMode} (Session Avg RT: ${sessionAvgRt} ms)
-                        </td>
-                    `;
-
-                    // B. Add Round Breakdown (Sequential)
-                    session.results.forEach((result, index) => {
-                        const row = resultsTableBody.insertRow();
-                        // Alternate background colors per row for readability
-                        row.className = 'text-sm ' + (index % 2 === 0 ? 'bg-white' : 'bg-gray-50'); 
-                        
-                        const rtDisplay = result.rt !== null ? result.rt.toFixed(0) : '--';
-                        let statusClass = 'text-gray-500';
-                        if (result.status === 'HIT') statusClass = 'text-green-600 font-bold';
-                        else if (result.status === 'FALSE START') statusClass = 'text-red-600 font-bold';
-
-                        row.innerHTML = `
-                            <td class="px-3 py-2 whitespace-nowrap">${displayMode}</td>
-                            <td class="px-3 py-2 whitespace-nowrap">${result.round}</td>
-                            <td class="px-3 py-2 whitespace-nowrap">${rtDisplay}</td>
-                            <td class="px-3 py-2 whitespace-nowrap">
-                                <span class="${statusClass}">${result.status}</span>
-                            </td>
-                        `;
-                    });
-                    
-                    // C. Add False Start Summary Row (Separator)
-                    const falseStartCount = session.results.filter(r => r.status === 'FALSE START').length;
-                    const summaryRow = resultsTableBody.insertRow();
-                    // Use a light yellow and a stronger bottom border to act as a clear separator
-                    summaryRow.className = 'text-base bg-yellow-100 font-semibold border-b-2 border-yellow-400'; 
-                    summaryRow.innerHTML = `
-                        <td class="px-3 py-2 whitespace-nowrap" colspan="3">Total False Starts for ${displayMode}:</td>
-                        <td class="px-3 py-2 whitespace-nowrap text-red-600">${falseStartCount}</td>
-                    `;
-                });
-                
-                loadingMessage.classList.add('hidden');
-                resultsTable.classList.remove('hidden');
-
-                document.getElementById('results-modal').classList.remove('hidden');
-
-            } catch (error) {
-                console.error("Error fetching results: ", error);
-                loadingMessage.textContent = 'Error loading data. Check console for details.';
-                document.getElementById('results-modal').classList.remove('hidden');
-                btnExport.disabled = true;
-            }
-        };
-
-        /**
-         * Converts the last fetched data (from Firestore) into a CSV file and triggers a download.
-         */
-        window.downloadResultsAsCSV = function() {
-            if (window.lastFetchedResults.length === 0) {
-                console.error("No results to export.");
-                const status = document.getElementById('export-status');
-                status.textContent = 'No data available to download.';
-                status.className = 'p-3 mb-4 text-sm font-semibold rounded-lg bg-red-100 text-red-700';
-                status.classList.remove('hidden');
-                return;
-            }
-            
-            const btnExport = document.getElementById('btn-export-data');
-            const status = document.getElementById('export-status');
-
-            status.textContent = 'Preparing CSV file...';
-            status.className = 'p-3 mb-4 text-sm font-semibold rounded-lg bg-blue-100 text-blue-700';
-            status.classList.remove('hidden');
-            btnExport.disabled = true;
-
-            // Define the CSV Headers (Must match the Google Sheet column headers)
-            const headers = [
-                'Session ID', 'Timestamp (ISO)', 'Participant Name', 'Grade', 'Sex', 
-                'Training/Test Type', 'Mode', 'Round Number', 'Reaction Time (ms)', 'Status', 
-                'Interval Duration (ms)'
-            ];
-            
-            let csvContent = headers.join(',') + '\n';
-            const participantNameForFile = window.lastFetchedResults[0].participant?.fullName.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'participant';
-
-            // Flatten and convert data rows
-            window.lastFetchedResults.forEach(session => {
-                const participant = session.participant;
-                const sessionId = session.id;
-                // Format timestamp for CSV
-                const timestamp = session.timestamp ? new Date(session.timestamp.toMillis()).toISOString() : 'N/A';
-                
-                session.results.forEach(result => {
-                    const row = [
-                        // Ensure no commas or quotes mess up the CSV structure
-                        `"${sessionId}"`,
-                        timestamp,
-                        `"${participant.fullName}"`,
-                        participant.gradeLevel,
-                        participant.sex,
-                        session.mode.includes('practice') ? 'Training' : 'Test', // Training/Test Type
-                        `"${formatMode(session.mode)}"`,
-                        result.round,
-                        result.rt !== null ? result.rt.toFixed(0) : 'N/A',
-                        result.status,
-                        result.interval || 'N/A'
-                    ];
-                    csvContent += row.join(',') + '\n';
-                });
-            });
-
-            try {
-                // 1. Create a Blob (Binary Large Object) containing the CSV content
-                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                
-                // 2. Create a download link element
-                const link = document.createElement('a');
-                
-                // 3. Set the file name (e.g., alex_johnson_rt_data_20251019.csv)
-                const dateString = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-                link.download = `${participantNameForFile}_rt_data_${dateString}.csv`;
-                
-                // 4. Set the href to the blob URL
-                link.href = URL.createObjectURL(blob);
-                
-                // 5. Simulate a click to trigger the download
-                link.click();
-                
-                // Clean up the URL object
-                URL.revokeObjectURL(link.href);
-
-                status.textContent = `Success! The file "${link.download}" has been downloaded.`;
-                status.className = 'p-3 mb-4 text-sm font-semibold rounded-lg bg-green-100 text-green-700';
-                
-            } catch (error) {
-                console.error("Error generating or downloading CSV:", error);
-                status.textContent = `Error during download: ${error.message}`;
-                status.className = 'p-3 mb-4 text-sm font-semibold rounded-lg bg-red-100 text-red-700';
-            } finally {
-                btnExport.disabled = false;
-            }
-        };
-
-
-        // Initialize Firebase on load
-        window.addEventListener('load', initFirebase);
-    </script>
-
     <script>
-        // ... (Remaining JavaScript remains the same) ...
+        // --- LOCAL STORAGE FUNCTIONS ---
+        // New utility functions for local data persistence
+        
+        /**
+         * Safely loads all session data from localStorage.
+         * @returns {Array} An array of stored session objects.
+         */
+        function loadLocalResults() {
+            const json = localStorage.getItem('reactionTrainerSessions');
+            try {
+                return json ? JSON.parse(json) : [];
+            } catch (e) {
+                console.error("Error parsing local results, resetting storage.", e);
+                return [];
+            }
+        }
+
+        /**
+         * Appends a new session's results to the local storage.
+         * @param {Object} sessionData - The complete session object to save.
+         */
+        function saveLocalSession(sessionData) {
+            const sessions = loadLocalResults();
+            sessions.push(sessionData);
+            localStorage.setItem('reactionTrainerSessions', JSON.stringify(sessions));
+        }
+
         // --- 3.A. Game Constants ---
         const FIXED_INTERVAL_MS = 3500; 
         const PRACTICE_ROUNDS = 30; 
@@ -610,8 +267,7 @@
         const btnTestVariable = document.getElementById('btn-test-variable');
         const btnTestFixed = document.getElementById('btn-test-fixed');
         const btnResults = document.getElementById('btn-results');
-        
-        // UPDATED: New DOM references for validation
+        const btnDownloadCSV = document.getElementById('btn-download-csv');
         const fullNameInput = document.getElementById('full-name');
         const nameErrorDisplay = document.getElementById('name-error');
 
@@ -648,9 +304,6 @@
 
         // --- Utility Functions ---
         
-        /**
-         * Fisher-Yates (Knuth) Shuffle for randomizing array elements.
-         */
         function randomizeArray(array) {
             let currentIndex = array.length, randomIndex;
             let arr = [...array]; // Create a copy
@@ -664,17 +317,11 @@
             return arr;
         }
 
-        /**
-         * Updates the central status display.
-         */
         function updateStatus(text, color = 'text-gray-800') {
             statusDisplay.textContent = text;
             statusDisplay.className = `text-lg font-bold absolute left-1/2 transform -translate-x-1/2 ${color}`;
         }
         
-        /**
-         * Clears all active timeouts and intervals.
-         */
         function clearAllTimers() {
             Object.values(gameState.timers).forEach(timer => {
                 if (timer) clearTimeout(timer);
@@ -683,11 +330,8 @@
             gameState.timers = { countdown: null, cue: null, timeout: null, delay: null };
         }
 
-        // --- UI State Management (Updated for sequential flow) ---
+        // --- UI State Management ---
 
-        /**
-         * Enables/disables mode selection buttons based on sequential rules.
-         */
         function updateModeButtons() {
             const disableAllModes = gameState.isRunning || gameState.isPaused;
 
@@ -700,64 +344,47 @@
             
             btnTestFixed.disabled = disableAllModes || !gameState.hasCompletedTest1;
 
-            // Pause/Resume button state
             btnPauseResume.disabled = !gameState.isRunning;
             if (gameState.isPaused) {
-                btnPauseResume.textContent = '▶'; // Show Play icon when paused
+                btnPauseResume.textContent = '▶'; 
             } else {
-                btnPauseResume.textContent = '⏸'; // Show Pause icon when running
+                btnPauseResume.textContent = '⏸'; 
             }
         }
 
-        /**
-         * Manages the pause/resume state and button icon.
-         */
         function togglePause() {
             if (!gameState.isRunning) return;
 
             gameState.isPaused = !gameState.isPaused;
             if (gameState.isPaused) {
-                // Pause Logic
                 clearAllTimers();
                 reactionBox.classList.remove('flash-cue'); 
                 countdownText.textContent = 'Paused';
                 updateStatus('Paused', 'text-orange-500');
             } else {
-                // Resume Logic
                 updateStatus(`Resumed. Restarting Round ${gameState.currentRound}...`, 'text-green-500');
                 gameState.timers.delay = setTimeout(restartCurrentRound, 500); 
             }
             updateModeButtons();
         }
 
-        /**
-         * Function to restart the current round's sequence (used for False Starts and Resuming).
-         */
         function restartCurrentRound() {
             if (gameState.isPaused || !gameState.isRunning) return;
             startCountdown();
         }
 
-        /**
-         * Executes the blue flash cue and starts the reaction timer.
-         */
         function cueFlash() {
             gameState.cueTime = Date.now();
             gameState.isWaitingForCue = false;
             gameState.isWaitingForReaction = true;
             
-            // Apply Blue Cue State
             reactionBox.classList.add('flash-cue');
             countdownText.textContent = ''; 
             updateStatus('REACT NOW!', 'text-blue-500');
 
-            // Missed Trial Timeout (10 seconds)
             gameState.timers.timeout = setTimeout(handleTimeout, MISSED_TIMEOUT_MS);
         }
 
-        /**
-         * Starts the 3-2-1 countdown sequence.
-         */
         function startCountdown() {
             if (gameState.isPaused || !gameState.isRunning) return;
 
@@ -781,9 +408,6 @@
             }, 1000);
         }
 
-        /**
-         * Advances to the next round or ends the session.
-         */
         function nextRound() {
             if (gameState.isPaused || !gameState.isRunning || gameState.isSessionComplete) return;
 
@@ -801,9 +425,6 @@
             startCountdown();
         }
 
-        /**
-         * Cleans up after a session and saves results. 
-         */
         function endSession() {
             clearAllTimers();
             gameState.isRunning = false;
@@ -811,7 +432,7 @@
             gameState.isWaitingForReaction = false;
             gameState.isSessionComplete = true; 
 
-            // Save results
+            // --- CRITICAL STEP: Save results locally ---
             window.saveResults(gameState.mode, gameState.totalRounds, gameState.results);
 
             let message = '';
@@ -830,25 +451,17 @@
                 statusColor = 'text-blue-700';
             }
 
-            // UI updates
             countdownText.textContent = message;
             updateStatus(message, statusColor);
             updateModeButtons();
-            
-            // Automatically show results for the completed session
-            window.showAllHistoricalResults();
         }
 
-        /**
-         * Handles a successful reaction (HIT).
-         */
         function handleHit() {
             clearTimeout(gameState.timers.timeout); 
 
             const reactionTime = Date.now() - gameState.cueTime;
             const interval = gameState.cueTime - gameState.startTime;
 
-            // Record Result
             gameState.results.push({
                 round: gameState.currentRound,
                 mode: gameState.mode,
@@ -857,7 +470,6 @@
                 status: 'HIT'
             });
 
-            // Display Feedback
             reactionBox.classList.remove('flash-cue');
             countdownText.textContent = `${reactionTime.toFixed(0)} ms`;
             lastRtDisplay.textContent = `Last RT: ${reactionTime.toFixed(0)} ms`;
@@ -865,14 +477,12 @@
             
             gameState.isWaitingForReaction = false;
 
-            // Next Round (increments round count)
             gameState.timers.delay = setTimeout(nextRound, POST_TRIAL_DELAY_MS);
         }
 
         function handleFalseStart() {
             clearAllTimers();
             
-            // Record Result
             gameState.results.push({
                 round: gameState.currentRound,
                 mode: gameState.mode,
@@ -881,7 +491,6 @@
                 status: 'FALSE START'
             });
 
-            // False Start Feedback (flash red for 500ms)
             countdownText.textContent = 'FALSE START';
             reactionBox.classList.add('bg-red-400', 'text-white');
             reactionBox.classList.remove('flash-cue');
@@ -891,15 +500,13 @@
             gameState.isWaitingForReaction = false;
 
             gameState.timers.delay = setTimeout(() => {
-                // Restart the same round
                 restartCurrentRound(); 
-            }, 500); // 500ms flash
+            }, 500); 
         }
         
         function handleTimeout() {
             clearAllTimers();
             
-            // Record Result
             gameState.results.push({
                 round: gameState.currentRound,
                 mode: gameState.mode,
@@ -908,14 +515,12 @@
                 status: 'MISSED'
             });
 
-            // Display Feedback
             countdownText.textContent = 'MISSED';
             reactionBox.classList.remove('flash-cue');
             updateStatus('MISSED! Starting next round...', 'text-yellow-600');
             
             gameState.isWaitingForReaction = false;
 
-            // Next Round (increments round count)
             gameState.timers.delay = setTimeout(nextRound, POST_TRIAL_DELAY_MS);
         }
 
@@ -925,12 +530,15 @@
 
             let interval;
             
+            // For Reaction Test 1, the interval is always fixed for true reaction measurement
             if (gameState.mode === 'variable-test') {
-                 interval = 2360; // 2.36 seconds
+                 interval = 2360; 
             } 
+            // For Reaction Test 2 and Fixed Practice, interval is fixed
             else if (gameState.mode === 'fixed-practice' || gameState.mode === 'fixed-test') {
                 interval = FIXED_INTERVAL_MS; 
             } 
+            // For Variable Practice, use the randomized array
             else if (gameState.mode === 'variable-practice') {
                 interval = gameState.intervalArray[gameState.intervalIndex];
             } else {
@@ -949,7 +557,6 @@
             if (mode === 'fixed-practice') gameState.hasStartedFixedPractice = true;
             if (mode === 'variable-practice') gameState.hasStartedVariablePractice = true;
             
-            // Reset State
             gameState.mode = mode;
             gameState.isRunning = true;
             gameState.isPaused = false;
@@ -966,16 +573,207 @@
                 gameState.intervalIndex = 0;
             }
 
-            // UI updates
             btnPauseResume.disabled = false;
             updateModeButtons();
             
             nextRound(); 
         }
+        
+        // --- Session Saving Logic (Replaces Firestore/GAS) ---
+        window.saveResults = function(mode, totalRounds, results) {
+            const dataToSave = {
+                id: crypto.randomUUID(), // Unique ID for this session
+                participant: gameState.participant, 
+                mode: mode,
+                totalRounds: totalRounds,
+                timestamp: new Date().toISOString(),
+                results: results
+            };
+            
+            saveLocalSession(dataToSave);
+            console.log("Session results saved successfully to Local Storage.");
+        };
+
+        function formatMode(mode) {
+            switch (mode) {
+                case 'fixed-practice': return 'Training Set A (Fixed)';
+                case 'variable-practice': return 'Training Set B (Variable)';
+                case 'variable-test': return 'Reaction Test 1 (Variable Cue)';
+                case 'fixed-test': return 'Reaction Test 2 (Fixed Cue)';
+                default: return mode;
+            }
+        }
+        
+        /**
+         * Converts all stored data into a CSV format and triggers a download.
+         */
+        window.downloadCSV = function() {
+            const allSessions = loadLocalResults();
+            if (allSessions.length === 0) {
+                alert("No results to download."); // Using alert here for simple download failure
+                return;
+            }
+
+            const header = [
+                "Session ID", "Participant Name", "Grade Level", "Sex", "Session Mode", 
+                "Timestamp", "Round Number", "RT (ms)", "Status", "Cue Interval (ms)"
+            ];
+            let csv = header.join(',') + '\n';
+
+            allSessions.forEach(session => {
+                const baseData = [
+                    session.id, 
+                    session.participant.fullName.replace(/,/g, ''), // Remove commas from names
+                    session.participant.gradeLevel, 
+                    session.participant.sex,
+                    formatMode(session.mode).replace(/,/g, ''),
+                    new Date(session.timestamp).toLocaleString()
+                ].map(v => `"${v}"`).join(','); // Quote base data
+
+                session.results.forEach(result => {
+                    const rowData = [
+                        result.round,
+                        result.rt !== null ? result.rt.toFixed(0) : 'N/A',
+                        result.status,
+                        result.interval !== null ? result.interval.toFixed(0) : 'N/A'
+                    ].map(v => `"${v}"`).join(','); // Quote result data
+
+                    csv += baseData.slice(0, -1) + rowData + '\n';
+                });
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            if (link.download !== undefined) { 
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", `ReactionTrainer_Results_${new Date().toISOString().slice(0, 10)}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        };
 
         /**
-         * Core function to handle a user click or spacebar press.
+         * Fetches and displays all historical results from Local Storage.
          */
+        window.showAllHistoricalResults = function() {
+            const loadingMessage = document.getElementById('results-loading-message');
+            const resultsTable = document.getElementById('results-table');
+            const resultsTableBody = document.getElementById('results-table-body');
+            
+            document.getElementById('results-modal').classList.remove('hidden');
+
+            const allSessions = loadLocalResults();
+            
+            resultsTableBody.innerHTML = ''; // Clear previous results
+            
+            if (allSessions.length === 0) {
+                loadingMessage.textContent = 'No past sessions found.';
+                loadingMessage.classList.remove('hidden');
+                resultsTable.classList.add('hidden');
+                btnDownloadCSV.disabled = true;
+                return; 
+            }
+            
+            btnDownloadCSV.disabled = false;
+            loadingMessage.classList.add('hidden');
+            resultsTable.classList.remove('hidden');
+
+
+            const modeOrder = {
+                'fixed-practice': 1,
+                'variable-practice': 1,
+                'variable-test': 2,
+                'fixed-test': 3
+            };
+
+            // Sort all sessions first by type, then by timestamp
+            allSessions.sort((a, b) => {
+                const orderA = modeOrder[a.mode] || 99;
+                const orderB = modeOrder[b.mode] || 99;
+                
+                if (orderA !== orderB) {
+                    return orderA - orderB;
+                }
+                return new Date(a.timestamp) - new Date(b.timestamp);
+            });
+
+            let totalHits = 0;
+            let totalFalseStarts = 0;
+            let totalMissed = 0;
+            let totalRounds = 0;
+            let allRts = [];
+            let participantName = allSessions[0].participant?.fullName || 'N/A';
+            
+            allSessions.forEach(session => {
+                session.results.forEach(result => {
+                    if (result.status === 'HIT' && result.rt !== null) {
+                        allRts.push(result.rt);
+                    }
+                });
+                totalRounds += session.totalRounds;
+                totalHits += session.results.filter(r => r.status === 'HIT').length;
+                totalFalseStarts += session.results.filter(r => r.status === 'FALSE START').length;
+                totalMissed += session.results.filter(r => r.status === 'MISSED').length;
+            });
+            
+            const overallAvgRt = allRts.length > 0 ? (allRts.reduce((a, b) => a + b, 0) / allRts.length).toFixed(0) : '--';
+
+            // --- 2. Update Summary Area ---
+            document.getElementById('participant-name').textContent = participantName; 
+            document.getElementById('results-total-sessions').textContent = allSessions.length;
+            document.getElementById('results-total-rounds').textContent = totalRounds;
+            document.getElementById('results-avg-rt').textContent = overallAvgRt;
+            document.getElementById('results-hits').textContent = totalHits;
+            document.getElementById('results-false-starts').textContent = totalFalseStarts;
+            document.getElementById('results-missed').textContent = totalMissed;
+
+            // --- 3. Populate Unified Breakdown Table ---
+            allSessions.forEach((session) => {
+                const displayMode = formatMode(session.mode);
+                
+                const sessionHits = session.results.filter(r => r.status === 'HIT');
+                const sessionAvgRt = sessionHits.length > 0 ? (sessionHits.map(r => r.rt).reduce((a, b) => a + b, 0) / sessionHits.length).toFixed(0) : '--';
+                
+                const headerRow = resultsTableBody.insertRow();
+                headerRow.className = 'text-sm bg-blue-100 font-bold border-t-4 border-blue-400';
+                headerRow.innerHTML = `
+                    <td class="px-3 py-2 whitespace-nowrap" colspan="4">
+                        ${displayMode} (Session Avg RT: ${sessionAvgRt} ms, Date: ${new Date(session.timestamp).toLocaleDateString()})
+                    </td>
+                `;
+
+                session.results.forEach((result, index) => {
+                    const row = resultsTableBody.insertRow();
+                    row.className = 'text-sm ' + (index % 2 === 0 ? 'bg-white' : 'bg-gray-50'); 
+                    
+                    const rtDisplay = result.rt !== null ? result.rt.toFixed(0) : '--';
+                    let statusClass = 'text-gray-500';
+                    if (result.status === 'HIT') statusClass = 'text-green-600 font-bold';
+                    else if (result.status === 'FALSE START') statusClass = 'text-red-600 font-bold';
+
+                    row.innerHTML = `
+                        <td class="px-3 py-2 whitespace-nowrap">${displayMode}</td>
+                        <td class="px-3 py-2 whitespace-nowrap">${result.round}</td>
+                        <td class="px-3 py-2 whitespace-nowrap">${rtDisplay}</td>
+                        <td class="px-3 py-2 whitespace-nowrap">
+                            <span class="${statusClass}">${result.status}</span>
+                        </td>
+                    `;
+                });
+                
+                const falseStartCount = session.results.filter(r => r.status === 'FALSE START').length;
+                const summaryRow = resultsTableBody.insertRow();
+                summaryRow.className = 'text-base bg-yellow-100 font-semibold border-b-2 border-yellow-400'; 
+                summaryRow.innerHTML = `
+                    <td class="px-3 py-2 whitespace-nowrap" colspan="3">Total False Starts for this session:</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-red-600">${falseStartCount}</td>
+                `;
+            });
+        };
+        
         window.handleReaction = function(event) {
             if (gameState.isPaused || !gameState.isRunning || gameState.isSessionComplete) return;
 
@@ -991,17 +789,16 @@
 
         // --- Event Listeners and Initialization ---
 
-        // Participant Modal Submission
         participantForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const formData = new FormData(e.target);
             
             const fullName = formData.get('fullName').trim();
             const gradeLevel = parseInt(formData.get('gradeLevel'));
+            const sex = formData.get('sex');
             
-            nameErrorDisplay.classList.add('hidden'); // Clear previous errors
+            nameErrorDisplay.classList.add('hidden'); 
 
-            // UPDATED: Name validation with explicit feedback
             const nameRegex = /^[A-Za-z\s.'-]+$/; 
             
             if (fullName.length < 2) {
@@ -1017,8 +814,6 @@
             }
             
             if (gradeLevel < 1 || gradeLevel > 12) {
-                // If a grade error occurs, we still only use console.error for consistency, 
-                // as the user only requested changes for the name field.
                 console.error("Grade level out of range.");
                 return; 
             }
@@ -1026,8 +821,11 @@
             gameState.participant = {
                 fullName: fullName,
                 gradeLevel: gradeLevel,
-                sex: formData.get('sex')
+                sex: sex
             };
+            
+            // Save participant data to local storage
+            localStorage.setItem('participantData', JSON.stringify(gameState.participant));
 
             infoModal.classList.add('hidden');
             countdownText.textContent = 'Welcome';
@@ -1035,7 +833,6 @@
             updateModeButtons(); 
         });
 
-        // Mode Buttons Click
         document.querySelectorAll('.btn-mode').forEach(button => {
             button.addEventListener('click', (e) => {
                 if (e.target.disabled) return; 
@@ -1069,42 +866,67 @@
             });
         });
 
-        // Pause/Resume Button
         btnPauseResume.addEventListener('click', togglePause);
 
-        // View Results Button 
+        // Listener for the global click handler on the results button
         btnResults.addEventListener('click', () => {
-            window.showAllHistoricalResults();
+             window.showAllHistoricalResults();
         });
 
-        // Reaction Area Click 
+
         reactionBox.addEventListener('click', window.handleReaction);
 
-        // Global Spacebar Listener
         document.onkeydown = function(e) {
             if (e.key === ' ' || e.key === 'Spacebar') {
-                if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'BUTTON') {
+                
+                // Check if the user is typing in an input field. If so, let them type a space.
+                const activeTag = document.activeElement.tagName;
+                const activeType = document.activeElement.type;
+                const isTyping = (activeTag === 'INPUT' || activeTag === 'TEXTAREA') && 
+                                 (activeType === 'text' || activeType === 'number');
+
+                if (isTyping) {
+                    return; 
+                }
+
+                e.preventDefault(); 
+
+                // 1. If paused, spacebar resumes (addresses user request)
+                if (gameState.isRunning && gameState.isPaused) {
+                    togglePause();
                     return;
                 }
-                e.preventDefault(); 
-                window.handleReaction(e); 
+                
+                // 2. If running (or waiting for a cue), spacebar acts as reaction
+                if (gameState.isRunning) {
+                    window.handleReaction(e);
+                    return;
+                }
             }
         };
 
-        // --- Tab Focus/Blur Handlers (Pause on Blur, Manual Resume) ---
         window.addEventListener('blur', () => {
             if (gameState.isRunning && !gameState.isPaused) {
-                // Auto-pause when tab loses focus
                 togglePause(); 
             }
         });
         
-        // Initial UI setup
+        // --- Immediate Initial Setup ---
+        
+        // Load participant data from local storage on startup
+        const storedParticipant = localStorage.getItem('participantData');
+        if (storedParticipant) {
+            try {
+                gameState.participant = JSON.parse(storedParticipant);
+                infoModal.classList.add('hidden');
+            } catch (e) {
+                console.error("Failed to parse stored participant data.");
+                localStorage.removeItem('participantData');
+            }
+        }
+        
         updateStatus('Ready');
         updateModeButtons();
     </script>
 </body>
 </html>
-
-
-
