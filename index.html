@@ -164,9 +164,15 @@
             <!-- Modal Footer with Download and Close Buttons -->
             <div class="mt-auto pt-4 border-t flex justify-between items-center">
                 <!-- Download Button -->
-                <button id="btn-download-csv" onclick="window.downloadCSV()" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 disabled:opacity-50" disabled>
-                    Download as CSV
-                </button>
+                <div class="flex flex-col items-start">
+                    <button id="btn-download-csv" onclick="window.downloadCSV()" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 disabled:opacity-50" disabled>
+                        Download CSV
+                    </button>
+                    <p class="text-xs text-gray-500 mt-1 max-w-xs">
+                        This file is an export copy. The original data is securely stored in your browser.
+                    </p>
+                </div>
+
                 <!-- Close Button -->
                 <button onclick="document.getElementById('results-modal').classList.add('hidden')" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg transition duration-200">Close</button>
             </div>
@@ -338,13 +344,16 @@
         function updateModeButtons() {
             const disableAllModes = gameState.isRunning || gameState.isPaused;
 
+            // Training sets can only be started if none have started yet
             const hasStartedAnyTraining = gameState.hasStartedFixedPractice || gameState.hasStartedVariablePractice;
             
             btnFixedPractice.disabled = disableAllModes || hasStartedAnyTraining;
             btnVariablePractice.disabled = disableAllModes || hasStartedAnyTraining;
             
+            // Test 1 requires training completion
             btnTestVariable.disabled = disableAllModes || !gameState.hasCompletedTraining || gameState.hasCompletedTest1;
             
+            // Test 2 requires Test 1 completion
             btnTestFixed.disabled = disableAllModes || !gameState.hasCompletedTest1;
 
             btnPauseResume.disabled = !gameState.isRunning;
@@ -353,6 +362,39 @@
             } else {
                 btnPauseResume.textContent = '⏸'; 
             }
+        }
+
+        /**
+         * Checks historical data and infers the participant's progress to re-enable correct buttons.
+         */
+        function checkAndRestoreState() {
+            const allSessions = loadLocalResults();
+            if (allSessions.length === 0) {
+                updateModeButtons();
+                return;
+            }
+
+            // Check what modes have been started/completed
+            const modes = allSessions.map(s => s.mode);
+            
+            const hasFixed = modes.includes('fixed-practice');
+            const hasVariable = modes.includes('variable-practice');
+            const hasTest1 = modes.includes('variable-test');
+
+            gameState.hasStartedFixedPractice = hasFixed;
+            gameState.hasStartedVariablePractice = hasVariable;
+            
+            // If both training sets exist (even if only one round was saved for one, it's considered started)
+            if (hasFixed && hasVariable) {
+                 gameState.hasCompletedTraining = true;
+            }
+
+            // If Test 1 (Variable Test) exists
+            if (hasTest1) {
+                gameState.hasCompletedTest1 = true;
+            }
+
+            updateModeButtons(); 
         }
 
         function togglePause() {
@@ -413,7 +455,6 @@
 
         /**
          * Safely advances to the next round or ends the session.
-         * Fixes the potential extra round bug by checking the count BEFORE incrementing.
          */
         function nextRound() {
             // Guard clause: If already paused, done, or not running, exit immediately.
@@ -422,7 +463,6 @@
             }
 
             // Check if the current round is the LAST intended round.
-            // If currentRound is 30 and totalRounds is 30, it means round 30 just finished.
             if (gameState.currentRound === gameState.totalRounds) {
                 endSession();
                 return;
@@ -448,15 +488,16 @@
             // --- CRITICAL STEP: Save results locally ---
             window.saveResults(gameState.mode, gameState.totalRounds, gameState.results);
 
+            // Re-check and restore state to enable the *next* sequential test button
+            checkAndRestoreState(); 
+
             let message = '';
             let statusColor = '';
             
             if (gameState.mode === 'fixed-practice' || gameState.mode === 'variable-practice') { 
-                gameState.hasCompletedTraining = true;
                 message = 'Training Complete!';
                 statusColor = 'text-green-700';
             } else if (gameState.mode === 'variable-test') {
-                gameState.hasCompletedTest1 = true;
                 message = 'Test 1 Complete!';
                 statusColor = 'text-green-700';
             } else if (gameState.mode === 'fixed-test') {
@@ -544,11 +585,11 @@
 
             let interval;
             
-            // For Reaction Test 1, the interval is always fixed for true reaction measurement
+            // For Reaction Test 1, the interval is always a short fixed one (2360ms) for true reaction measurement
             if (gameState.mode === 'variable-test') {
                  interval = 2360; 
             } 
-            // For Reaction Test 2 and Fixed Practice, interval is fixed
+            // For Reaction Test 2 and Fixed Practice, interval is the long fixed one
             else if (gameState.mode === 'fixed-practice' || gameState.mode === 'fixed-test') {
                 interval = FIXED_INTERVAL_MS; 
             } 
@@ -568,6 +609,7 @@
 
             clearAllTimers();
 
+            // Note: We track start status locally to control button access for the current session flow
             if (mode === 'fixed-practice') gameState.hasStartedFixedPractice = true;
             if (mode === 'variable-practice') gameState.hasStartedVariablePractice = true;
             
@@ -596,11 +638,11 @@
         // --- Session Saving Logic ---
         window.saveResults = function(mode, totalRounds, results) {
             const dataToSave = {
-                id: crypto.randomUUID(), // Kept for CSV download, but not displayed
+                id: crypto.randomUUID(), 
                 participant: gameState.participant, 
                 mode: mode,
                 totalRounds: totalRounds,
-                timestamp: new Date().toISOString(), // Kept for CSV download, but not displayed
+                timestamp: new Date().toISOString(), 
                 results: results
             };
             
@@ -619,45 +661,48 @@
         }
         
         /**
-         * Converts all stored data into a CSV format and triggers a download.
+         * Converts all stored data into a clean, simplified CSV format and triggers a download.
+         * Excludes Session ID, Timestamp, and Cue Interval. Fixes misalignment.
          */
         window.downloadCSV = function() {
             const allSessions = loadLocalResults();
             if (allSessions.length === 0) {
-                alert("No results to download. Please complete a session first."); 
+                // Use custom modal instead of alert if possible, but for simplicity, console log.
+                console.warn("No results to download."); 
                 return;
             }
 
-            // CSV Header includes all raw data, including IDs and timestamps for archival
+            // New, simplified CSV Header
             const header = [
-                "Session ID", "Participant Name", "Grade Level", "Sex", "Session Mode", 
-                "Timestamp", "Round Number", "RT (ms)", "Status", "Cue Interval (ms)"
+                "Participant Name", "Grade Level", "Sex", "Session Mode", 
+                "Round Number", "RT (ms)", "Status"
             ];
             let csv = header.join(',') + '\n';
 
             allSessions.forEach(session => {
                 const participant = session.participant || {}; 
                 
-                // Base data for each session (ID and Timestamp are retained here for full data download)
-                const baseData = [
-                    session.id, 
-                    (participant.fullName || 'N/A').replace(/,/g, ''), 
-                    participant.gradeLevel || 'N/A', 
-                    participant.sex || 'N/A',
-                    formatMode(session.mode || 'N/A').replace(/,/g, ''),
-                    new Date(session.timestamp).toLocaleString()
-                ].map(v => `"${v}"`).join(','); 
+                // Base participant and session info (fixed per session)
+                // Use a standard quote-escaping technique for names and modes
+                const name = (participant.fullName || 'N/A').replace(/"/g, '""'); 
+                const grade = participant.gradeLevel || 'N/A'; 
+                const sex = participant.sex || 'N/A';
+                const mode = formatMode(session.mode || 'N/A').replace(/"/g, '""'); 
 
                 (session.results || []).forEach(result => {
-                    const rowData = [
+                    const rtDisplay = result.rt !== null ? result.rt.toFixed(0) : 'N/A';
+                    
+                    const rowArray = [
+                        `"${name}"`, 
+                        grade, 
+                        sex,
+                        `"${mode}"`, 
                         result.round || 'N/A',
-                        result.rt !== null ? result.rt.toFixed(0) : 'N/A',
-                        result.status || 'N/A',
-                        result.interval !== null ? result.interval.toFixed(0) : 'N/A'
-                    ].map(v => `"${v}"`).join(','); 
+                        rtDisplay,
+                        result.status || 'N/A'
+                    ];
 
-                    // Concatenate the quoted base data (excluding the last quote) with the row data
-                    csv += baseData.slice(0, -1) + rowData + '\n';
+                    csv += rowArray.join(',') + '\n';
                 });
             });
 
@@ -873,7 +918,7 @@
             infoModal.classList.add('hidden');
             countdownText.textContent = 'Welcome';
             updateStatus('Ready. Choose a Training Set.');
-            updateModeButtons(); 
+            checkAndRestoreState(); // Re-check state after a new participant is entered
         });
 
         document.querySelectorAll('.btn-mode').forEach(button => {
@@ -954,7 +999,7 @@
             }
         });
         
-        // --- Immediate Initial Setup ---
+        // --- Immediate Initial Setup on Load ---
         
         // Load participant data from local storage on startup
         const storedParticipant = localStorage.getItem('participantData');
@@ -969,7 +1014,8 @@
         }
         
         updateStatus('Ready');
-        updateModeButtons();
+        // This is the key function that now checks history and sets the state/button enablement
+        checkAndRestoreState(); 
     </script>
 </body>
 </html>
