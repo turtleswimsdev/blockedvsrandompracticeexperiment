@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- 1. Page Title -->
     <title>Anticipation vs. Reaction Time Training</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -19,18 +18,14 @@
 
         /* 2.B. Reaction Box and Text Styling */
         #reaction-box {
-            /* 17. Size & Constraint */
             width: 100%;
             height: 100%;
             max-width: 800px;
             max-height: 80vh; 
-            /* 18. Default Style */
             background-color: var(--color-bg-mid);
             border: 4px solid var(--color-border);
             border-radius: 1rem;
-            /* 19. Shadow */
             box-shadow: 0 10px 15px 3px rgba(0, 0, 0, 0.1), 0 4px 6px 2px rgba(0, 0, 0, 0.05);
-            /* 20. Default Content Text */
             font-size: 3rem;
             font-weight: 800;
             color: var(--color-text-dark);
@@ -41,17 +36,13 @@
 
         /* 2.C. Blue Cue State (.flash-cue) */
         .flash-cue {
-            /* 23. background-color */
             background-color: var(--color-flash-blue) !important; 
-            /* 24. color */
             color: white !important; 
-            /* 25. border-color */
             border-color: var(--color-flash-blue) !important;
         }
 
         /* 21. Countdown Text Size - Sizing Fix Implemented Here */
         #countdown-text {
-            /* Default font size is now consistently 3rem (smaller) */
             font-size: 3rem; 
             min-width: 500px; 
             display: inline-block;
@@ -70,18 +61,18 @@
 </head>
 <body class="flex flex-col h-screen">
 
-    <!-- 2.B. Status Bar (h-16) -->
+    <!-- Status Bar -->
     <header class="h-16 flex items-center justify-between px-6 z-10 bg-white border-b border-gray-200 shadow-md relative">
         <div id="last-rt-display" class="text-sm font-semibold text-gray-600">
             Last RT: -- ms
         </div>
 
-        <!-- 12. Center Status (#status-display) -->
+        <!-- Center Status -->
         <div id="status-display" class="text-lg font-bold text-gray-800 absolute left-1/2 transform -translate-x-1/2">
             Ready
         </div>
 
-        <!-- 13. Pause/Resume Button (#btn-pause-resume) -->
+        <!-- Pause/Resume Button -->
         <button id="btn-pause-resume" 
                 class="w-10 h-10 text-2xl bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition duration-150 shadow-inner disabled:opacity-50"
                 disabled
@@ -92,7 +83,7 @@
 
     <!-- Options Bar -->
     <nav id="options-bar" class="p-3 bg-gray-50 border-b border-gray-200">
-        <!-- 15. Button Layout -->
+        <!-- Button Layout -->
         <div class="flex gap-3 flex-wrap justify-center">
             
             <!-- Training & Test Buttons -->
@@ -109,16 +100,16 @@
                 Reaction Test 2
             </button>
             <button id="btn-results" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-200">
-                View Results
+                View Historical Results
             </button>
         </div>
     </nav>
 
-    <!-- 16. Reaction Area Container -->
+    <!-- Reaction Area Container -->
     <main id="reaction-area-container" class="flex-1 flex items-center justify-center p-4">
         <!-- Reaction Box -->
         <div id="reaction-box" class="flex items-center justify-center text-center p-8" onclick="window.handleReaction(event)">
-            <!-- 44. Initial Content Text -->
+            <!-- Initial Content Text -->
             <span id="countdown-text">Welcome</span>
         </div>
     </main>
@@ -132,6 +123,9 @@
                 All Historical Session Results
             </h2>
             
+            <!-- Export Status Display (USED FOR APPS SCRIPT FEEDBACK) -->
+            <div id="export-status" class="hidden p-3 mb-4 text-sm font-semibold rounded-lg"></div>
+
             <!-- Main Content Area -->
             <div id="session-details-content" class="text-sm flex-1 overflow-y-auto">
                 
@@ -176,27 +170,26 @@
         </div>
     </div>
 
-    <!-- 2. Initial State: Participant Information Modal -->
+    <!-- Initial State: Participant Information Modal -->
     <div id="info-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center">
         <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
-            <!-- 50. Info Modal Title -->
+            <!-- Info Modal Title -->
             <h2 class="text-2xl font-bold mb-6">Participant Information</h2>
             <form id="participant-form">
                 <div class="mb-4">
-                    <!-- 51. Info Modal Name Label - UPDATED: Removed descriptive text -->
+                    <!-- Info Modal Name Label -->
                     <label for="full-name" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                     <input type="text" id="full-name" name="fullName" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-blue-500 focus:border-blue-500">
-                    <!-- UPDATED: Added dedicated error display -->
                     <div id="name-error" class="text-red-500 text-xs mt-1 hidden" role="alert"></div>
                 </div>
                 <div class="mb-4">
-                    <!-- 52. Info Modal Grade Label -->
+                    <!-- Info Modal Grade Label -->
                     <label for="grade-level" class="block text-sm font-medium text-gray-700 mb-1">Grade Level (Number Only, 1-12)</label>
                     <input type="number" id="grade-level" name="gradeLevel" min="1" max="12" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-blue-500 focus:border-blue-500">
                 </div>
                 <div class="mb-6">
                     <span class="block text-sm font-medium text-gray-700 mb-2">Sex</span>
-                    <!-- 53. Info Modal Sex Options -->
+                    <!-- Info Modal Sex Options -->
                     <div class="flex space-x-4">
                         <label class="inline-flex items-center">
                             <input type="radio" name="sex" value="Male" required class="form-radio h-4 w-4 text-blue-600">
@@ -208,7 +201,7 @@
                         </label>
                     </div>
                 </div>
-                <!-- 54. Info Modal Button -->
+                <!-- Info Modal Button -->
                 <button id="btn-start-experiment" type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200 shadow-lg">
                     Start Experiment
                 </button>
@@ -229,14 +222,16 @@
         
         // --- Game Setup ---
         let app, db, auth, userId = null;
+
+        // NOTE: --- THE APPS SCRIPT WEB APP URL MUST GO HERE (Step 5) ---
+        // Replace this empty string with the URL you get after deployment.
+        const GAS_WEB_APP_URL = "https://script.google.com/a/macros/mycw.org/s/AKfycbyYV_kRfMGX6J1KTkKWcw9c-6kvgaa_o7XTfcnBcVd9edj8k8Ts0dA1hD7yVM50mySpbQ/exec"; 
         
-        /**
-         * Initializes Firebase and authenticates the user.
-         */
+        // --- Firebase Initialization ---
         async function initFirebase() {
             try {
                 if (Object.keys(firebaseConfig).length === 0) {
-                    console.error("Firebase config is missing or empty.");
+                    console.error("Firebase config is missing or empty. Data will not persist across sessions.");
                     return;
                 }
                 
@@ -266,7 +261,7 @@
         }
         
         /**
-         * Saves the current session's results to Firestore.
+         * Saves the current session's results to Firestore (for historical viewing).
          */
         window.saveResults = async function(mode, totalRounds, results) {
             if (!db || !userId) {
@@ -285,33 +280,83 @@
             };
 
             const path = `/artifacts/${appId}/users/${userId}/results`;
+            let docRef;
             try {
-                await addDoc(collection(db, path), dataToSave);
-                console.log("Session results saved successfully.");
+                docRef = await addDoc(collection(db, path), dataToSave);
+                console.log("Session results saved successfully to Firestore.");
             } catch (e) {
-                console.error("Error adding document: ", e);
+                console.error("Error adding document to Firestore: ", e);
+                return;
             }
+            
+            // --- CRITICAL STEP: Send the same data to Google Apps Script ---
+            // We pass the document ID back to the server, so you can track it if needed.
+            window.sendToAppsScript({
+                docId: docRef.id,
+                ...dataToSave,
+                // Ensure timestamp is sent as a readable string since it's now a Firestore object
+                timestamp: new Date().toISOString() 
+            });
+        };
+        
+        /**
+         * Sends the collected data to the Google Apps Script Web App for Sheet logging.
+         */
+        window.sendToAppsScript = async function(data) {
+            const status = document.getElementById('export-status');
+            
+            if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL === "") {
+                console.error("GAS_WEB_APP_URL is not set. Data not sent to Google Sheet.");
+                status.textContent = 'ERROR: Apps Script URL not set. Data NOT saved to Google Sheet.';
+                status.className = 'p-3 mb-4 text-sm font-semibold rounded-lg bg-red-100 text-red-700';
+                status.classList.remove('hidden');
+                return;
+            }
+
+            status.textContent = 'Saving data to Google Sheet...';
+            status.className = 'p-3 mb-4 text-sm font-semibold rounded-lg bg-blue-100 text-blue-700';
+            status.classList.remove('hidden');
+
+            try {
+                const response = await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors', // Required for simple post to Apps Script
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                // Note: The 'no-cors' mode means we can't inspect the response content, 
+                // but if the fetch is successful, we assume the server received it.
+                if (response) {
+                    status.textContent = 'Data successfully sent to Google Sheet.';
+                    status.className = 'p-3 mb-4 text-sm font-semibold rounded-lg bg-green-100 text-green-700';
+                }
+                
+            } catch (error) {
+                console.error("Error sending data to Apps Script:", error);
+                status.textContent = `CRITICAL ERROR: Failed to send data to Google Sheet. Details in console.`;
+                status.className = 'p-3 mb-4 text-sm font-semibold rounded-lg bg-red-100 text-red-700';
+            }
+            
+            // Hide status after a few seconds
+            setTimeout(() => status.classList.add('hidden'), 5000);
         };
 
-        // Helper to format mode for display
+
+        // Helper and display functions (formatMode, showAllHistoricalResults) remain the same...
+
         function formatMode(mode) {
             switch (mode) {
-                case 'fixed-practice':
-                    return 'Training Set A';
-                case 'variable-practice':
-                    return 'Training Set B';
-                case 'variable-test':
-                    return 'Reaction Test 1';
-                case 'fixed-test':
-                    return 'Reaction Test 2';
-                default:
-                    return mode;
+                case 'fixed-practice': return 'Training Set A (Fixed)';
+                case 'variable-practice': return 'Training Set B (Variable)';
+                case 'variable-test': return 'Reaction Test 1 (Variable Cue)';
+                case 'fixed-test': return 'Reaction Test 2 (Fixed Cue)';
+                default: return mode;
             }
         }
         
-        /**
-         * Fetches and displays ALL historical results in a single, unified view.
-         */
+        // NOTE: The Firebase fetching logic remains the same as in the CSV version
+        // so that the user can still view their *historical* data stored in Firestore.
         window.showAllHistoricalResults = async function() {
             if (!db || !userId) {
                 console.error("Database not initialized or User ID not set. Cannot view results.");
@@ -321,11 +366,13 @@
             const loadingMessage = document.getElementById('results-loading-message');
             const resultsTable = document.getElementById('results-table');
             const resultsTableBody = document.getElementById('results-table-body');
+            const exportStatus = document.getElementById('export-status');
             
             loadingMessage.classList.remove('hidden');
             resultsTable.classList.add('hidden');
             resultsTableBody.innerHTML = '';
-            
+            exportStatus.classList.add('hidden'); // Clear status
+
             const path = `/artifacts/${appId}/users/${userId}/results`;
             
             try {
@@ -348,26 +395,20 @@
                 let allSessions = [];
                 querySnapshot.forEach(doc => {
                     const data = doc.data();
-                    // Get timestamp in milliseconds for secondary chronological sorting
                     const timestampMs = data.timestamp ? (data.timestamp.toMillis ? data.timestamp.toMillis() : 0) : 0;
                     allSessions.push({ id: doc.id, ...data, timestampMs });
                 });
 
-                // Sort the sessions: primarily by experiment mode order, secondarily by timestamp (oldest first)
                 allSessions.sort((a, b) => {
                     const orderA = modeOrder[a.mode] || 99;
                     const orderB = modeOrder[b.mode] || 99;
                     
-                    // 1. Sort primarily by defined order (Training -> Test 1 -> Test 2)
                     if (orderA !== orderB) {
                         return orderA - orderB;
                     }
-                    
-                    // 2. Secondary sort: within the same mode group, sort chronologically (oldest first)
                     return a.timestampMs - b.timestampMs;
                 });
 
-                // --- 1. Calculate Global Summary Statistics ---
                 let totalHits = 0;
                 let totalFalseStarts = 0;
                 let totalMissed = 0;
@@ -402,7 +443,6 @@
                 allSessions.forEach((session, sessionIndex) => {
                     const displayMode = formatMode(session.mode);
                     
-                    // A. Add Session Header Row 
                     const sessionHits = session.results.filter(r => r.status === 'HIT');
                     const sessionAvgRt = sessionHits.length > 0 ? (sessionHits.map(r => r.rt).reduce((a, b) => a + b, 0) / sessionHits.length).toFixed(0) : '--';
                     
@@ -414,10 +454,8 @@
                         </td>
                     `;
 
-                    // B. Add Round Breakdown (Sequential)
                     session.results.forEach((result, index) => {
                         const row = resultsTableBody.insertRow();
-                        // Alternate background colors per row for readability
                         row.className = 'text-sm ' + (index % 2 === 0 ? 'bg-white' : 'bg-gray-50'); 
                         
                         const rtDisplay = result.rt !== null ? result.rt.toFixed(0) : '--';
@@ -435,10 +473,8 @@
                         `;
                     });
                     
-                    // C. Add False Start Summary Row (Separator)
                     const falseStartCount = session.results.filter(r => r.status === 'FALSE START').length;
                     const summaryRow = resultsTableBody.insertRow();
-                    // Use a light yellow and a stronger bottom border to act as a clear separator
                     summaryRow.className = 'text-base bg-yellow-100 font-semibold border-b-2 border-yellow-400'; 
                     summaryRow.innerHTML = `
                         <td class="px-3 py-2 whitespace-nowrap" colspan="3">Total False Starts for ${displayMode}:</td>
@@ -458,6 +494,7 @@
             }
         };
 
+
         // Initialize Firebase on load
         window.addEventListener('load', initFirebase);
     </script>
@@ -470,8 +507,6 @@
         const MISSED_TIMEOUT_MS = 10000; 
         const POST_TRIAL_DELAY_MS = 1500; 
         
-        // Removed: const TEST_TRAINING_ROUNDS = 2; 
-
         // --- 3.B. Variable Intervals (Mandatory Array) ---
         const VARIABLE_INTERVALS_MS = [
             1840, 2190, 3970, 5320, 2780, 4260, 1370, 3440, 2550, 5750,
@@ -492,9 +527,6 @@
         const btnTestVariable = document.getElementById('btn-test-variable');
         const btnTestFixed = document.getElementById('btn-test-fixed');
         const btnResults = document.getElementById('btn-results');
-        // Removed: const btnTestTraining = document.getElementById('btn-test-training'); 
-        
-        // UPDATED: New DOM references for validation
         const fullNameInput = document.getElementById('full-name');
         const nameErrorDisplay = document.getElementById('name-error');
 
@@ -531,9 +563,6 @@
 
         // --- Utility Functions ---
         
-        /**
-         * Fisher-Yates (Knuth) Shuffle for randomizing array elements.
-         */
         function randomizeArray(array) {
             let currentIndex = array.length, randomIndex;
             let arr = [...array]; // Create a copy
@@ -547,17 +576,11 @@
             return arr;
         }
 
-        /**
-         * Updates the central status display.
-         */
         function updateStatus(text, color = 'text-gray-800') {
             statusDisplay.textContent = text;
             statusDisplay.className = `text-lg font-bold absolute left-1/2 transform -translate-x-1/2 ${color}`;
         }
         
-        /**
-         * Clears all active timeouts and intervals.
-         */
         function clearAllTimers() {
             Object.values(gameState.timers).forEach(timer => {
                 if (timer) clearTimeout(timer);
@@ -566,11 +589,8 @@
             gameState.timers = { countdown: null, cue: null, timeout: null, delay: null };
         }
 
-        // --- UI State Management (Updated for sequential flow) ---
+        // --- UI State Management ---
 
-        /**
-         * Enables/disables mode selection buttons based on sequential rules.
-         */
         function updateModeButtons() {
             const disableAllModes = gameState.isRunning || gameState.isPaused;
 
@@ -583,66 +603,47 @@
             
             btnTestFixed.disabled = disableAllModes || !gameState.hasCompletedTest1;
 
-            // Removed: btnTestTraining.disabled = disableAllModes;
-
-            // Pause/Resume button state
             btnPauseResume.disabled = !gameState.isRunning;
             if (gameState.isPaused) {
-                btnPauseResume.textContent = '▶'; // Show Play icon when paused
+                btnPauseResume.textContent = '▶'; 
             } else {
-                btnPauseResume.textContent = '⏸'; // Show Pause icon when running
+                btnPauseResume.textContent = '⏸'; 
             }
         }
 
-        /**
-         * Manages the pause/resume state and button icon.
-         */
         function togglePause() {
             if (!gameState.isRunning) return;
 
             gameState.isPaused = !gameState.isPaused;
             if (gameState.isPaused) {
-                // Pause Logic
                 clearAllTimers();
                 reactionBox.classList.remove('flash-cue'); 
                 countdownText.textContent = 'Paused';
                 updateStatus('Paused', 'text-orange-500');
             } else {
-                // Resume Logic
                 updateStatus(`Resumed. Restarting Round ${gameState.currentRound}...`, 'text-green-500');
                 gameState.timers.delay = setTimeout(restartCurrentRound, 500); 
             }
             updateModeButtons();
         }
 
-        /**
-         * Function to restart the current round's sequence (used for False Starts and Resuming).
-         */
         function restartCurrentRound() {
             if (gameState.isPaused || !gameState.isRunning) return;
             startCountdown();
         }
 
-        /**
-         * Executes the blue flash cue and starts the reaction timer.
-         */
         function cueFlash() {
             gameState.cueTime = Date.now();
             gameState.isWaitingForCue = false;
             gameState.isWaitingForReaction = true;
             
-            // Apply Blue Cue State
             reactionBox.classList.add('flash-cue');
             countdownText.textContent = ''; 
             updateStatus('REACT NOW!', 'text-blue-500');
 
-            // Missed Trial Timeout (10 seconds)
             gameState.timers.timeout = setTimeout(handleTimeout, MISSED_TIMEOUT_MS);
         }
 
-        /**
-         * Starts the 3-2-1 countdown sequence.
-         */
         function startCountdown() {
             if (gameState.isPaused || !gameState.isRunning) return;
 
@@ -666,9 +667,6 @@
             }, 1000);
         }
 
-        /**
-         * Advances to the next round or ends the session.
-         */
         function nextRound() {
             if (gameState.isPaused || !gameState.isRunning || gameState.isSessionComplete) return;
 
@@ -686,9 +684,6 @@
             startCountdown();
         }
 
-        /**
-         * Cleans up after a session and saves results. 
-         */
         function endSession() {
             clearAllTimers();
             gameState.isRunning = false;
@@ -696,13 +691,13 @@
             gameState.isWaitingForReaction = false;
             gameState.isSessionComplete = true; 
 
-            // Save results
+            // --- CRITICAL STEP: Save results and trigger Apps Script send ---
             window.saveResults(gameState.mode, gameState.totalRounds, gameState.results);
 
             let message = '';
             let statusColor = '';
             
-            if (gameState.mode === 'fixed-practice' || gameState.mode === 'variable-practice') { // Removed test-training here
+            if (gameState.mode === 'fixed-practice' || gameState.mode === 'variable-practice') { 
                 gameState.hasCompletedTraining = true;
                 message = 'Training Complete!';
                 statusColor = 'text-green-700';
@@ -715,25 +710,17 @@
                 statusColor = 'text-blue-700';
             }
 
-            // UI updates
             countdownText.textContent = message;
             updateStatus(message, statusColor);
             updateModeButtons();
-            
-            // Automatically show results for the completed session
-            window.showAllHistoricalResults();
         }
 
-        /**
-         * Handles a successful reaction (HIT).
-         */
         function handleHit() {
             clearTimeout(gameState.timers.timeout); 
 
             const reactionTime = Date.now() - gameState.cueTime;
             const interval = gameState.cueTime - gameState.startTime;
 
-            // Record Result
             gameState.results.push({
                 round: gameState.currentRound,
                 mode: gameState.mode,
@@ -742,7 +729,6 @@
                 status: 'HIT'
             });
 
-            // Display Feedback
             reactionBox.classList.remove('flash-cue');
             countdownText.textContent = `${reactionTime.toFixed(0)} ms`;
             lastRtDisplay.textContent = `Last RT: ${reactionTime.toFixed(0)} ms`;
@@ -750,14 +736,12 @@
             
             gameState.isWaitingForReaction = false;
 
-            // Next Round (increments round count)
             gameState.timers.delay = setTimeout(nextRound, POST_TRIAL_DELAY_MS);
         }
 
         function handleFalseStart() {
             clearAllTimers();
             
-            // Record Result
             gameState.results.push({
                 round: gameState.currentRound,
                 mode: gameState.mode,
@@ -766,7 +750,6 @@
                 status: 'FALSE START'
             });
 
-            // False Start Feedback (flash red for 500ms)
             countdownText.textContent = 'FALSE START';
             reactionBox.classList.add('bg-red-400', 'text-white');
             reactionBox.classList.remove('flash-cue');
@@ -776,15 +759,13 @@
             gameState.isWaitingForReaction = false;
 
             gameState.timers.delay = setTimeout(() => {
-                // Restart the same round
                 restartCurrentRound(); 
-            }, 500); // 500ms flash
+            }, 500); 
         }
         
         function handleTimeout() {
             clearAllTimers();
             
-            // Record Result
             gameState.results.push({
                 round: gameState.currentRound,
                 mode: gameState.mode,
@@ -793,14 +774,12 @@
                 status: 'MISSED'
             });
 
-            // Display Feedback
             countdownText.textContent = 'MISSED';
             reactionBox.classList.remove('flash-cue');
             updateStatus('MISSED! Starting next round...', 'text-yellow-600');
             
             gameState.isWaitingForReaction = false;
 
-            // Next Round (increments round count)
             gameState.timers.delay = setTimeout(nextRound, POST_TRIAL_DELAY_MS);
         }
 
@@ -811,7 +790,7 @@
             let interval;
             
             if (gameState.mode === 'variable-test') {
-                 interval = 2360; // 2.36 seconds
+                 interval = 2360; 
             } 
             else if (gameState.mode === 'fixed-practice' || gameState.mode === 'fixed-test') {
                 interval = FIXED_INTERVAL_MS; 
@@ -834,7 +813,6 @@
             if (mode === 'fixed-practice') gameState.hasStartedFixedPractice = true;
             if (mode === 'variable-practice') gameState.hasStartedVariablePractice = true;
             
-            // Reset State
             gameState.mode = mode;
             gameState.isRunning = true;
             gameState.isPaused = false;
@@ -851,16 +829,12 @@
                 gameState.intervalIndex = 0;
             }
 
-            // UI updates
             btnPauseResume.disabled = false;
             updateModeButtons();
             
             nextRound(); 
         }
 
-        /**
-         * Core function to handle a user click or spacebar press.
-         */
         window.handleReaction = function(event) {
             if (gameState.isPaused || !gameState.isRunning || gameState.isSessionComplete) return;
 
@@ -876,7 +850,6 @@
 
         // --- Event Listeners and Initialization ---
 
-        // Participant Modal Submission
         participantForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const formData = new FormData(e.target);
@@ -884,9 +857,8 @@
             const fullName = formData.get('fullName').trim();
             const gradeLevel = parseInt(formData.get('gradeLevel'));
             
-            nameErrorDisplay.classList.add('hidden'); // Clear previous errors
+            nameErrorDisplay.classList.add('hidden'); 
 
-            // UPDATED: Name validation with explicit feedback
             const nameRegex = /^[A-Za-z\s.'-]+$/; 
             
             if (fullName.length < 2) {
@@ -902,8 +874,6 @@
             }
             
             if (gradeLevel < 1 || gradeLevel > 12) {
-                // If a grade error occurs, we still only use console.error for consistency, 
-                // as the user only requested changes for the name field.
                 console.error("Grade level out of range.");
                 return; 
             }
@@ -920,7 +890,6 @@
             updateModeButtons(); 
         });
 
-        // Mode Buttons Click
         document.querySelectorAll('.btn-mode').forEach(button => {
             button.addEventListener('click', (e) => {
                 if (e.target.disabled) return; 
@@ -940,7 +909,7 @@
                 } else if (id === 'btn-test-fixed') { 
                     mode = 'fixed-test';
                     rounds = SINGLE_ROUND; 
-                } else { // Removed test-training condition
+                } else { 
                     return;
                 }
 
@@ -954,18 +923,14 @@
             });
         });
 
-        // Pause/Resume Button
         btnPauseResume.addEventListener('click', togglePause);
 
-        // View Results Button 
         btnResults.addEventListener('click', () => {
             window.showAllHistoricalResults();
         });
 
-        // Reaction Area Click 
         reactionBox.addEventListener('click', window.handleReaction);
 
-        // Global Spacebar Listener
         document.onkeydown = function(e) {
             if (e.key === ' ' || e.key === 'Spacebar') {
                 if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'BUTTON') {
@@ -976,15 +941,12 @@
             }
         };
 
-        // --- Tab Focus/Blur Handlers (Pause on Blur, Manual Resume) ---
         window.addEventListener('blur', () => {
             if (gameState.isRunning && !gameState.isPaused) {
-                // Auto-pause when tab loses focus
                 togglePause(); 
             }
         });
         
-        // Initial UI setup
         updateStatus('Ready');
         updateModeButtons();
     </script>
