@@ -49,11 +49,15 @@
             border-color: var(--color-flash-blue) !important;
         }
 
-        /* 21. Countdown Text Size */
+        /* 21. Countdown Text Size - Sizing Fix Implemented Here */
         #countdown-text {
-            font-size: 8rem;
+            /* Default font size is now consistently 3rem (smaller) */
+            font-size: 3rem; 
+            min-width: 500px; 
+            display: inline-block;
+            transition: none; 
         }
-
+        
         /* 9. Main Application Layout */
         body, html {
             height: 100%;
@@ -90,7 +94,8 @@
     <nav id="options-bar" class="p-3 bg-gray-50 border-b border-gray-200">
         <!-- 15. Button Layout -->
         <div class="flex gap-3 flex-wrap justify-center">
-            <!-- Grayscale Button Styling Applied to all mode buttons -->
+            
+            <!-- Training & Test Buttons -->
             <button id="btn-fixed-practice" class="btn-mode bg-gray-700 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-200 disabled:opacity-50">
                 Training Set A
             </button>
@@ -103,7 +108,7 @@
             <button id="btn-test-fixed" class="btn-mode bg-gray-700 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-200 disabled:opacity-50">
                 Reaction Test 2
             </button>
-            <button id="btn-results" class="bg-gray-700 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-200">
+            <button id="btn-results" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-200">
                 View Results
             </button>
         </div>
@@ -118,28 +123,56 @@
         </div>
     </main>
 
-    <!-- Results Modal (Hidden) -->
-    <div id="results-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center">
-        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <h2 class="text-2xl font-bold mb-4 border-b pb-2">Results for <span id="participant-name"></span></h2>
-            <div class="text-sm mb-4">
-                <p>Mode: <span id="results-mode" class="font-medium"></span> | Total Rounds: <span id="results-total-rounds" class="font-medium"></span></p>
-                <p>Average RT: <span id="results-avg-rt" class="font-medium"></span> ms | Total Hits: <span id="results-hits" class="font-medium"></span> | False Starts: <span id="results-false-starts" class="font-medium"></span> | Missed: <span id="results-missed" class="font-medium"></span></p>
+    <!-- Results Modal (Hidden) - Updated to a Single View -->
+    <div id="results-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4">
+        <!-- Main Content Panel (Full Width and Height) -->
+        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            
+            <h2 class="text-2xl font-bold mb-4 border-b pb-2 text-gray-800">
+                All Historical Session Results
+            </h2>
+            
+            <!-- Main Content Area -->
+            <div id="session-details-content" class="text-sm flex-1 overflow-y-auto">
+                
+                <!-- Summary Area (Always Visible: Totals for ALL sessions) -->
+                <div id="summary-area" class="mb-4 space-y-1 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <p class="text-xs text-gray-500">Totals calculated from all sessions below.</p>
+                    <p>Participant: <span id="participant-name" class="font-medium">--</span></p>
+                    <p>Total Sessions: <span id="results-total-sessions" class="font-medium">--</span></p>
+                    <p>Total Rounds: <span id="results-total-rounds" class="font-medium">--</span></p>
+                    <p class="mt-2 text-base font-semibold">
+                        Overall Average RT: <span id="results-avg-rt" class="text-green-600">--</span> ms | 
+                        Total Hits: <span id="results-hits" class="text-green-600">--</span> | 
+                        Total False Starts: <span id="results-false-starts" class="text-red-600">--</span> | 
+                        Total Missed: <span id="results-missed" class="text-yellow-600">--</span>
+                    </p>
+                </div>
+                
+                <h3 class="text-lg font-semibold mt-6 mb-2">Unified Round Breakdown (Ordered by Experiment Phase)</h3>
+                <div id="results-loading-message" class="text-center p-8 text-gray-500">Loading results...</div>
+
+                <div class="overflow-x-auto">
+                    <table id="results-table" class="min-w-full divide-y divide-gray-200 mb-6 hidden">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Round</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reaction Time (ms)</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200" id="results-table-body">
+                            <!-- Details loaded here sequentially -->
+                        </tbody>
+                    </table>
+                </div>
+                
             </div>
-            <table id="results-table" class="min-w-full divide-y divide-gray-200 mb-6">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Round</th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Interval (ms)</th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reaction Time (ms)</th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200" id="results-table-body">
-                    <!-- Results rows will be inserted here -->
-                </tbody>
-            </table>
-            <button onclick="document.getElementById('results-modal').classList.add('hidden')" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg transition duration-200">Close</button>
+            <!-- Close Button -->
+            <div class="mt-auto pt-4 border-t flex justify-end">
+                <button onclick="document.getElementById('results-modal').classList.add('hidden')" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg transition duration-200">Close</button>
+            </div>
         </div>
     </div>
 
@@ -150,9 +183,11 @@
             <h2 class="text-2xl font-bold mb-6">Participant Information</h2>
             <form id="participant-form">
                 <div class="mb-4">
-                    <!-- 51. Info Modal Name Label -->
-                    <label for="full-name" class="block text-sm font-medium text-gray-700 mb-1">Full Name (Letters Only)</label>
-                    <input type="text" id="full-name" name="fullName" pattern="[A-Za-z\s]+" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-blue-500 focus:border-blue-500">
+                    <!-- 51. Info Modal Name Label - UPDATED: Removed descriptive text -->
+                    <label for="full-name" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                    <input type="text" id="full-name" name="fullName" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-blue-500 focus:border-blue-500">
+                    <!-- UPDATED: Added dedicated error display -->
+                    <div id="name-error" class="text-red-500 text-xs mt-1 hidden" role="alert"></div>
                 </div>
                 <div class="mb-4">
                     <!-- 52. Info Modal Grade Label -->
@@ -185,7 +220,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, addDoc, collection, query, where, getDocs, onSnapshot, setLogLevel, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, addDoc, collection, query, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Global Variables (Mandatory) ---
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
@@ -194,16 +229,14 @@
         
         // --- Game Setup ---
         let app, db, auth, userId = null;
-
+        
         /**
          * Initializes Firebase and authenticates the user.
          */
         async function initFirebase() {
             try {
-                // setLogLevel('debug'); // Optional: uncomment for verbose logging
                 if (Object.keys(firebaseConfig).length === 0) {
                     console.error("Firebase config is missing or empty.");
-                    // Fallback to a non-persistent state or prompt for configuration
                     return;
                 }
                 
@@ -222,7 +255,6 @@
                         userId = user.uid;
                         console.log("Firebase authenticated. User ID:", userId);
                     } else {
-                        // This case should ideally not happen if auth is successful
                         userId = crypto.randomUUID(); 
                         console.warn("User not authenticated. Using random UUID for user ID.");
                     }
@@ -235,9 +267,6 @@
         
         /**
          * Saves the current session's results to Firestore.
-         * @param {string} mode - The practice/test mode name.
-         * @param {number} totalRounds - The total number of rounds attempted.
-         * @param {Array<Object>} results - The array of trial results.
          */
         window.saveResults = async function(mode, totalRounds, results) {
             if (!db || !userId) {
@@ -264,83 +293,168 @@
             }
         };
 
+        // Helper to format mode for display
+        function formatMode(mode) {
+            switch (mode) {
+                case 'fixed-practice':
+                    return 'Training Set A';
+                case 'variable-practice':
+                    return 'Training Set B';
+                case 'variable-test':
+                    return 'Reaction Test 1';
+                case 'fixed-test':
+                    return 'Reaction Test 2';
+                default:
+                    return mode;
+            }
+        }
+        
         /**
-         * Fetches and displays all past results for the current user.
+         * Fetches and displays ALL historical results in a single, unified view.
          */
-        window.displayAllResults = async function() {
+        window.showAllHistoricalResults = async function() {
             if (!db || !userId) {
                 console.error("Database not initialized or User ID not set. Cannot view results.");
                 return;
             }
 
-            const path = `/artifacts/${appId}/users/${userId}/results`;
+            const loadingMessage = document.getElementById('results-loading-message');
+            const resultsTable = document.getElementById('results-table');
             const resultsTableBody = document.getElementById('results-table-body');
-            resultsTableBody.innerHTML = '<tr><td colspan="4" class="text-center py-4">Loading results...</td></tr>';
+            
+            loadingMessage.classList.remove('hidden');
+            resultsTable.classList.add('hidden');
+            resultsTableBody.innerHTML = '';
+            
+            const path = `/artifacts/${appId}/users/${userId}/results`;
             
             try {
                 const q = query(collection(db, path));
                 const querySnapshot = await getDocs(q);
                 
                 if (querySnapshot.empty) {
-                    resultsTableBody.innerHTML = '<tr><td colspan="4" class="text-center py-4">No past results found.</td></tr>';
+                    loadingMessage.textContent = 'No past sessions found.';
+                    document.getElementById('results-modal').classList.remove('hidden');
                     return;
                 }
 
-                resultsTableBody.innerHTML = ''; // Clear loading message
+                const modeOrder = {
+                    'fixed-practice': 1,
+                    'variable-practice': 1,
+                    'variable-test': 2,
+                    'fixed-test': 3
+                };
 
-                // Get the most recent document
-                let latestData = null;
-                let latestTimestamp = 0;
-                
-                querySnapshot.forEach((doc) => {
+                let allSessions = [];
+                querySnapshot.forEach(doc => {
                     const data = doc.data();
-                    const timestamp = data.timestamp ? data.timestamp.toMillis() : 0;
-                    if (timestamp > latestTimestamp) {
-                        latestTimestamp = timestamp;
-                        latestData = data;
+                    // Get timestamp in milliseconds for secondary chronological sorting
+                    const timestampMs = data.timestamp ? (data.timestamp.toMillis ? data.timestamp.toMillis() : 0) : 0;
+                    allSessions.push({ id: doc.id, ...data, timestampMs });
+                });
+
+                // Sort the sessions: primarily by experiment mode order, secondarily by timestamp (oldest first)
+                allSessions.sort((a, b) => {
+                    const orderA = modeOrder[a.mode] || 99;
+                    const orderB = modeOrder[b.mode] || 99;
+                    
+                    // 1. Sort primarily by defined order (Training -> Test 1 -> Test 2)
+                    if (orderA !== orderB) {
+                        return orderA - orderB;
                     }
+                    
+                    // 2. Secondary sort: within the same mode group, sort chronologically (oldest first)
+                    return a.timestampMs - b.timestampMs;
+                });
+
+                // --- 1. Calculate Global Summary Statistics ---
+                let totalHits = 0;
+                let totalFalseStarts = 0;
+                let totalMissed = 0;
+                let totalRounds = 0;
+                let allRts = [];
+                let participantName = allSessions[0].participant?.fullName || 'N/A';
+                
+                allSessions.forEach(session => {
+                    session.results.forEach(result => {
+                        if (result.status === 'HIT' && result.rt !== null) {
+                            allRts.push(result.rt);
+                        }
+                    });
+                    totalRounds += session.totalRounds;
+                    totalHits += session.results.filter(r => r.status === 'HIT').length;
+                    totalFalseStarts += session.results.filter(r => r.status === 'FALSE START').length;
+                    totalMissed += session.results.filter(r => r.status === 'MISSED').length;
                 });
                 
-                if (latestData) {
-                    const data = latestData;
-                    const participantName = data.participant?.fullName || 'N/A';
-                    
-                    const hitCount = data.results.filter(r => r.status === 'HIT').length;
-                    const falseStartCount = data.results.filter(r => r.status === 'FALSE START').length;
-                    const missedCount = data.results.filter(r => r.status === 'MISSED').length;
-                    
-                    const hits = data.results.filter(r => r.status === 'HIT').map(r => r.rt);
-                    const avgRt = hits.length > 0 ? (hits.reduce((a, b) => a + b, 0) / hits.length).toFixed(2) : 'N/A';
+                const overallAvgRt = allRts.length > 0 ? (allRts.reduce((a, b) => a + b, 0) / allRts.length).toFixed(0) : '--';
 
-                    // Display summary for the latest session
-                    document.getElementById('participant-name').textContent = participantName;
-                    document.getElementById('results-mode').textContent = data.mode;
-                    document.getElementById('results-total-rounds').textContent = data.totalRounds;
-                    document.getElementById('results-avg-rt').textContent = avgRt;
-                    document.getElementById('results-hits').textContent = hitCount;
-                    document.getElementById('results-false-starts').textContent = falseStartCount;
-                    document.getElementById('results-missed').textContent = missedCount;
+                // --- 2. Update Summary Area ---
+                document.getElementById('participant-name').textContent = participantName; 
+                document.getElementById('results-total-sessions').textContent = allSessions.length;
+                document.getElementById('results-total-rounds').textContent = totalRounds;
+                document.getElementById('results-avg-rt').textContent = overallAvgRt;
+                document.getElementById('results-hits').textContent = totalHits;
+                document.getElementById('results-false-starts').textContent = totalFalseStarts;
+                document.getElementById('results-missed').textContent = totalMissed;
 
-                    data.results.forEach((result, index) => {
+                // --- 3. Populate Unified Breakdown Table ---
+                allSessions.forEach((session, sessionIndex) => {
+                    const displayMode = formatMode(session.mode);
+                    
+                    // A. Add Session Header Row 
+                    const sessionHits = session.results.filter(r => r.status === 'HIT');
+                    const sessionAvgRt = sessionHits.length > 0 ? (sessionHits.map(r => r.rt).reduce((a, b) => a + b, 0) / sessionHits.length).toFixed(0) : '--';
+                    
+                    const headerRow = resultsTableBody.insertRow();
+                    headerRow.className = 'text-sm bg-blue-100 font-bold border-t-4 border-blue-400';
+                    headerRow.innerHTML = `
+                        <td class="px-3 py-2 whitespace-nowrap" colspan="4">
+                            ${displayMode} (Session Avg RT: ${sessionAvgRt} ms)
+                        </td>
+                    `;
+
+                    // B. Add Round Breakdown (Sequential)
+                    session.results.forEach((result, index) => {
                         const row = resultsTableBody.insertRow();
-                        row.className = 'text-sm ' + (index % 2 === 0 ? 'bg-white' : 'bg-gray-50');
+                        // Alternate background colors per row for readability
+                        row.className = 'text-sm ' + (index % 2 === 0 ? 'bg-white' : 'bg-gray-50'); 
+                        
+                        const rtDisplay = result.rt !== null ? result.rt.toFixed(0) : '--';
+                        let statusClass = 'text-gray-500';
+                        if (result.status === 'HIT') statusClass = 'text-green-600 font-bold';
+                        else if (result.status === 'FALSE START') statusClass = 'text-red-600 font-bold';
+
                         row.innerHTML = `
-                            <td class="px-3 py-2 whitespace-nowrap">${index + 1}</td>
-                            <td class="px-3 py-2 whitespace-nowrap">${result.interval}</td>
-                            <td class="px-3 py-2 whitespace-nowrap">${result.rt !== null ? result.rt.toFixed(0) : '--'}</td>
+                            <td class="px-3 py-2 whitespace-nowrap">${displayMode}</td>
+                            <td class="px-3 py-2 whitespace-nowrap">${result.round}</td>
+                            <td class="px-3 py-2 whitespace-nowrap">${rtDisplay}</td>
                             <td class="px-3 py-2 whitespace-nowrap">
-                                <span class="${result.status === 'HIT' ? 'text-green-600 font-bold' : result.status === 'FALSE START' ? 'text-red-600 font-bold' : 'text-gray-500'}">${result.status}</span>
+                                <span class="${statusClass}">${result.status}</span>
                             </td>
                         `;
                     });
-                }
-
+                    
+                    // C. Add False Start Summary Row (Separator)
+                    const falseStartCount = session.results.filter(r => r.status === 'FALSE START').length;
+                    const summaryRow = resultsTableBody.insertRow();
+                    // Use a light yellow and a stronger bottom border to act as a clear separator
+                    summaryRow.className = 'text-base bg-yellow-100 font-semibold border-b-2 border-yellow-400'; 
+                    summaryRow.innerHTML = `
+                        <td class="px-3 py-2 whitespace-nowrap" colspan="3">Total False Starts for ${displayMode}:</td>
+                        <td class="px-3 py-2 whitespace-nowrap text-red-600">${falseStartCount}</td>
+                    `;
+                });
+                
+                loadingMessage.classList.add('hidden');
+                resultsTable.classList.remove('hidden');
 
                 document.getElementById('results-modal').classList.remove('hidden');
 
             } catch (error) {
                 console.error("Error fetching results: ", error);
-                resultsTableBody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-red-500">Error loading data.</td></tr>';
+                loadingMessage.textContent = 'Error loading data. Check console for details.';
+                document.getElementById('results-modal').classList.remove('hidden');
             }
         };
 
@@ -350,13 +464,13 @@
 
     <script>
         // --- 3.A. Game Constants ---
-        const FIXED_INTERVAL_MS = 3500; // Fixed delay for Training Set A
-        const TEST_FIXED_MS = 3500; // Fixed delay for Reaction Test 2
-        const TEST_VARIABLE_MS = 4830; // Max fixed delay for Reaction Test 1 before variable is used
-        const PRACTICE_ROUNDS = 30; // Number of rounds for Practice Modes
-        const SINGLE_ROUND = 1; // Number of rounds for Test Modes
-        const MISSED_TIMEOUT_MS = 10000; // 10 seconds for Missed Trial Timeout
-        const POST_TRIAL_DELAY_MS = 1500; // Delay before next round
+        const FIXED_INTERVAL_MS = 3500; 
+        const PRACTICE_ROUNDS = 30; 
+        const SINGLE_ROUND = 1; 
+        const MISSED_TIMEOUT_MS = 10000; 
+        const POST_TRIAL_DELAY_MS = 1500; 
+        
+        // Removed: const TEST_TRAINING_ROUNDS = 2; 
 
         // --- 3.B. Variable Intervals (Mandatory Array) ---
         const VARIABLE_INTERVALS_MS = [
@@ -378,17 +492,27 @@
         const btnTestVariable = document.getElementById('btn-test-variable');
         const btnTestFixed = document.getElementById('btn-test-fixed');
         const btnResults = document.getElementById('btn-results');
+        // Removed: const btnTestTraining = document.getElementById('btn-test-training'); 
+        
+        // UPDATED: New DOM references for validation
+        const fullNameInput = document.getElementById('full-name');
+        const nameErrorDisplay = document.getElementById('name-error');
 
-        // --- Game State ---
-        let gameState = {
-            participant: null, // Holds participant object
+        // --- Game State (Updated with sequential flags) ---
+        window.gameState = {
+            participant: null, 
             mode: 'none', 
             isRunning: false,
             isPaused: false,
             isWaitingForCue: false,
             isWaitingForReaction: false,
-            hasStartedFixedPractice: false, 
-            hasStartedVariablePractice: false, 
+            
+            hasStartedFixedPractice: false,
+            hasStartedVariablePractice: false,
+            hasCompletedTraining: false, 
+            hasCompletedTest1: false, 
+            isSessionComplete: false, 
+            
             currentRound: 0,
             totalRounds: 0,
             intervalArray: [], 
@@ -403,6 +527,7 @@
             cueTime: 0, 
             results: []
         };
+        let gameState = window.gameState; 
 
         // --- Utility Functions ---
         
@@ -416,7 +541,7 @@
                 randomIndex = Math.floor(Math.random() * currentIndex);
                 currentIndex--;
                 [arr[currentIndex], arr[randomIndex]] = [
-                    arr[randomIndex], arr[currentIndex]
+                    arr[currentIndex], arr[randomIndex]
                 ];
             }
             return arr;
@@ -441,25 +566,32 @@
             gameState.timers = { countdown: null, cue: null, timeout: null, delay: null };
         }
 
-        // --- UI State Management ---
+        // --- UI State Management (Updated for sequential flow) ---
 
         /**
-         * Enables/disables mode selection buttons based on exclusivity rules.
+         * Enables/disables mode selection buttons based on sequential rules.
          */
         function updateModeButtons() {
-            // Check if any round has been completed in the respective category
-            const hasStartedFixed = gameState.hasStartedFixedPractice || gameState.results.some(r => r.mode.includes('fixed'));
-            const hasStartedVariable = gameState.hasStartedVariablePractice || gameState.results.some(r => r.mode.includes('variable'));
-
             const disableAllModes = gameState.isRunning || gameState.isPaused;
 
-            // 38. If Variable has started, Fixed is disabled.
-            btnFixedPractice.disabled = disableAllModes || hasStartedVariable;
-            btnTestFixed.disabled = disableAllModes || hasStartedVariable;
+            const hasStartedAnyTraining = gameState.hasStartedFixedPractice || gameState.hasStartedVariablePractice;
+            
+            btnFixedPractice.disabled = disableAllModes || hasStartedAnyTraining;
+            btnVariablePractice.disabled = disableAllModes || hasStartedAnyTraining;
+            
+            btnTestVariable.disabled = disableAllModes || !gameState.hasCompletedTraining || gameState.hasCompletedTest1;
+            
+            btnTestFixed.disabled = disableAllModes || !gameState.hasCompletedTest1;
 
-            // 39. If Fixed has started, Variable is disabled.
-            btnVariablePractice.disabled = disableAllModes || hasStartedFixed;
-            btnTestVariable.disabled = disableAllModes || hasStartedFixed;
+            // Removed: btnTestTraining.disabled = disableAllModes;
+
+            // Pause/Resume button state
+            btnPauseResume.disabled = !gameState.isRunning;
+            if (gameState.isPaused) {
+                btnPauseResume.textContent = '▶'; // Show Play icon when paused
+            } else {
+                btnPauseResume.textContent = '⏸'; // Show Pause icon when running
+            }
         }
 
         /**
@@ -470,26 +602,21 @@
 
             gameState.isPaused = !gameState.isPaused;
             if (gameState.isPaused) {
-                // 34. Pause button text when game is paused (resume is available): '▶'
-                btnPauseResume.textContent = '▶';
+                // Pause Logic
                 clearAllTimers();
-                reactionBox.classList.remove('flash-cue'); // Remove flash in case it was mid-flash
+                reactionBox.classList.remove('flash-cue'); 
                 countdownText.textContent = 'Paused';
                 updateStatus('Paused', 'text-orange-500');
-                updateModeButtons();
             } else {
-                // 35. Pause button text when game is running (pause is available): '⏸'
-                btnPauseResume.textContent = '⏸';
-                // Fix: Restart the current round's countdown after a delay
+                // Resume Logic
                 updateStatus(`Resumed. Restarting Round ${gameState.currentRound}...`, 'text-green-500');
-                updateModeButtons();
-                gameState.timers.delay = setTimeout(startCountdown, POST_TRIAL_DELAY_MS); 
+                gameState.timers.delay = setTimeout(restartCurrentRound, 500); 
             }
+            updateModeButtons();
         }
 
         /**
-         * Function to restart the current round's countdown.
-         * Used for False Starts and Resuming.
+         * Function to restart the current round's sequence (used for False Starts and Resuming).
          */
         function restartCurrentRound() {
             if (gameState.isPaused || !gameState.isRunning) return;
@@ -497,56 +624,136 @@
         }
 
         /**
-         * Handles the click or spacebar reaction from the user.
+         * Executes the blue flash cue and starts the reaction timer.
          */
-        window.handleReaction = function(event) {
-            // Ensure reaction only processes if game is running and not paused
-            if (!gameState.isRunning || gameState.isPaused) return;
-
-            // Check if input is from mouse or spacebar and not a form input (3)
-            if (event.type === 'click' && event.target !== reactionBox) return;
-            if (event.type === 'keydown' && event.key !== ' ' && event.key !== 'Spacebar') return;
+        function cueFlash() {
+            gameState.cueTime = Date.now();
+            gameState.isWaitingForCue = false;
+            gameState.isWaitingForReaction = true;
             
-            // False Start Check
-            if (gameState.isWaitingForCue) {
-                return handleFalseStart();
-            }
+            // Apply Blue Cue State
+            reactionBox.classList.add('flash-cue');
+            countdownText.textContent = ''; 
+            updateStatus('REACT NOW!', 'text-blue-500');
 
-            // Hit Check
-            if (gameState.isWaitingForReaction) {
-                clearAllTimers();
-                
-                const reactionTime = Date.now() - gameState.cueTime;
-                
-                // Record Result
-                gameState.results.push({
-                    round: gameState.currentRound,
-                    mode: gameState.mode,
-                    interval: gameState.cueTime - gameState.startTime,
-                    rt: reactionTime,
-                    status: 'HIT'
-                });
-
-                // Display Feedback and RT
-                countdownText.textContent = `${reactionTime.toFixed(0)} ms`;
-                reactionBox.classList.remove('flash-cue');
-                reactionBox.classList.remove('bg-red-400');
-                updateStatus(`HIT! RT: ${reactionTime.toFixed(0)} ms`, 'text-green-600');
-                lastRtDisplay.textContent = `Last RT: ${reactionTime.toFixed(0)} ms`;
-
-                gameState.isWaitingForReaction = false;
-                
-                // Next Round
-                gameState.timers.delay = setTimeout(nextRound, POST_TRIAL_DELAY_MS);
-                return;
-            }
-
-            // Default state: do nothing
+            // Missed Trial Timeout (10 seconds)
+            gameState.timers.timeout = setTimeout(handleTimeout, MISSED_TIMEOUT_MS);
         }
 
         /**
-         * Handles a reaction before the cue flashes.
+         * Starts the 3-2-1 countdown sequence.
          */
+        function startCountdown() {
+            if (gameState.isPaused || !gameState.isRunning) return;
+
+            let count = 3;
+            reactionBox.classList.remove('flash-cue', 'bg-red-400', 'text-white');
+            countdownText.textContent = count;
+            updateStatus(`Round ${gameState.currentRound}/${gameState.totalRounds}. Get Ready...`);
+            
+            if (gameState.timers.countdown) clearInterval(gameState.timers.countdown);
+
+            gameState.timers.countdown = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    countdownText.textContent = count;
+                } else {
+                    clearInterval(gameState.timers.countdown);
+                    countdownText.textContent = ''; 
+                    updateStatus('WAIT for the flash', 'text-gray-700');
+                    startRoundTimer();
+                }
+            }, 1000);
+        }
+
+        /**
+         * Advances to the next round or ends the session.
+         */
+        function nextRound() {
+            if (gameState.isPaused || !gameState.isRunning || gameState.isSessionComplete) return;
+
+            gameState.currentRound++; 
+            
+            if (gameState.currentRound > gameState.totalRounds) {
+                endSession();
+                return;
+            }
+            
+            if (gameState.mode === 'variable-practice') {
+                gameState.intervalIndex++;
+            }
+            
+            startCountdown();
+        }
+
+        /**
+         * Cleans up after a session and saves results. 
+         */
+        function endSession() {
+            clearAllTimers();
+            gameState.isRunning = false;
+            gameState.isWaitingForCue = false;
+            gameState.isWaitingForReaction = false;
+            gameState.isSessionComplete = true; 
+
+            // Save results
+            window.saveResults(gameState.mode, gameState.totalRounds, gameState.results);
+
+            let message = '';
+            let statusColor = '';
+            
+            if (gameState.mode === 'fixed-practice' || gameState.mode === 'variable-practice') { // Removed test-training here
+                gameState.hasCompletedTraining = true;
+                message = 'Training Complete!';
+                statusColor = 'text-green-700';
+            } else if (gameState.mode === 'variable-test') {
+                gameState.hasCompletedTest1 = true;
+                message = 'Test 1 Complete!';
+                statusColor = 'text-green-700';
+            } else if (gameState.mode === 'fixed-test') {
+                message = 'All Tests Complete!';
+                statusColor = 'text-blue-700';
+            }
+
+            // UI updates
+            countdownText.textContent = message;
+            updateStatus(message, statusColor);
+            updateModeButtons();
+            
+            // Automatically show results for the completed session
+            window.showAllHistoricalResults();
+        }
+
+        /**
+         * Handles a successful reaction (HIT).
+         */
+        function handleHit() {
+            clearTimeout(gameState.timers.timeout); 
+
+            const reactionTime = Date.now() - gameState.cueTime;
+            const interval = gameState.cueTime - gameState.startTime;
+
+            // Record Result
+            gameState.results.push({
+                round: gameState.currentRound,
+                mode: gameState.mode,
+                interval: interval,
+                rt: reactionTime,
+                status: 'HIT'
+            });
+
+            // Display Feedback
+            reactionBox.classList.remove('flash-cue');
+            countdownText.textContent = `${reactionTime.toFixed(0)} ms`;
+            lastRtDisplay.textContent = `Last RT: ${reactionTime.toFixed(0)} ms`;
+            updateStatus('HIT!', 'text-green-600');
+            
+            gameState.isWaitingForReaction = false;
+
+            // Next Round (increments round count)
+            gameState.timers.delay = setTimeout(nextRound, POST_TRIAL_DELAY_MS);
+        }
+
         function handleFalseStart() {
             clearAllTimers();
             
@@ -559,25 +766,21 @@
                 status: 'FALSE START'
             });
 
-            // 26. False Start Feedback (flash red for 500ms)
+            // False Start Feedback (flash red for 500ms)
             countdownText.textContent = 'FALSE START';
             reactionBox.classList.add('bg-red-400', 'text-white');
             reactionBox.classList.remove('flash-cue');
             updateStatus('FALSE START! Restarting round...', 'text-red-600');
             
-            // Do NOT increment currentRound, instead restart the current round
             gameState.isWaitingForCue = false;
             gameState.isWaitingForReaction = false;
 
             gameState.timers.delay = setTimeout(() => {
-                reactionBox.classList.remove('bg-red-400', 'text-white');
-                restartCurrentRound(); // Restart the same round
+                // Restart the same round
+                restartCurrentRound(); 
             }, 500); // 500ms flash
         }
-
-        /**
-         * Handles a missed reaction (timeout).
-         */
+        
         function handleTimeout() {
             clearAllTimers();
             
@@ -601,183 +804,110 @@
             gameState.timers.delay = setTimeout(nextRound, POST_TRIAL_DELAY_MS);
         }
 
-        /**
-         * Executes the blue flash cue and starts the reaction timer.
-         */
-        function cueFlash() {
-            gameState.cueTime = Date.now();
-            gameState.isWaitingForCue = false;
-            gameState.isWaitingForReaction = true;
-            
-            // Apply Blue Cue State
-            reactionBox.classList.add('flash-cue');
-            countdownText.textContent = ''; // Change 3: Blank instead of 'CLICK!'
-            updateStatus('REACT NOW!', 'text-blue-500');
-
-            // 36. Missed Trial Timeout (10 seconds)
-            gameState.timers.timeout = setTimeout(handleTimeout, MISSED_TIMEOUT_MS);
-        }
-
-        /**
-         * Starts the 3-2-1 countdown sequence.
-         */
-        function startCountdown() {
-            if (gameState.isPaused || !gameState.isRunning) return;
-
-            let count = 3;
-            reactionBox.classList.remove('flash-cue');
-            countdownText.textContent = count;
-            updateStatus(`Round ${gameState.currentRound}/${gameState.totalRounds}. Get Ready...`);
-
-            // 33. Countdown (1000ms delay)
-            gameState.timers.countdown = setInterval(() => {
-                count--;
-                if (count > 0) {
-                    countdownText.textContent = count;
-                } else if (count === 0) {
-                    clearInterval(gameState.timers.countdown);
-                    countdownText.textContent = ''; // Change 2: Blank after 1 (0 is not shown)
-                    updateStatus('WAIT for the flash', 'text-gray-700');
-                    startRoundTimer();
-                }
-            }, 1000);
-        }
-
-        /**
-         * Sets the main delay timer for the cue flash.
-         */
         function startRoundTimer() {
             gameState.isWaitingForCue = true;
             gameState.startTime = Date.now();
 
             let interval;
             
-            // Determine the interval based on the mode
-            if (gameState.mode === 'fixed-practice') {
-                interval = FIXED_INTERVAL_MS; // 27.
-            } else if (gameState.mode === 'fixed-test') {
-                interval = TEST_FIXED_MS; // 28.
-            } else if (gameState.mode === 'variable-practice' || gameState.mode === 'variable-test') {
-                // Use the next interval from the randomized array
+            if (gameState.mode === 'variable-test') {
+                 interval = 2360; // 2.36 seconds
+            } 
+            else if (gameState.mode === 'fixed-practice' || gameState.mode === 'fixed-test') {
+                interval = FIXED_INTERVAL_MS; 
+            } 
+            else if (gameState.mode === 'variable-practice') {
                 interval = gameState.intervalArray[gameState.intervalIndex];
             } else {
                 console.error("Unknown game mode:", gameState.mode);
                 interval = FIXED_INTERVAL_MS;
             }
 
-            // Set the cue timer
             gameState.timers.cue = setTimeout(cueFlash, interval);
         }
 
-        /**
-         * Advances to the next round or ends the session.
-         */
-        function nextRound() {
-            if (gameState.isPaused || !gameState.isRunning) return;
-
-            gameState.currentRound++; // Increment round count
-            
-            // Advance variable index only if not a false start restart, and only if not a fixed mode
-            if (gameState.mode.includes('variable')) {
-                gameState.intervalIndex++;
-            }
-            
-            if (gameState.currentRound > gameState.totalRounds) {
-                // Session End
-                endSession();
-            } else {
-                // Next Round
-                startCountdown();
-            }
-        }
-
-        /**
-         * Initializes a new session with the selected mode.
-         */
         function startSession(mode, totalRounds) {
+            if (gameState.isSessionComplete && gameState.isRunning) return; 
+
             clearAllTimers();
 
-            // Set exclusivity flags (38 & 39)
-            if (mode.includes('fixed')) gameState.hasStartedFixedPractice = true;
-            if (mode.includes('variable')) gameState.hasStartedVariablePractice = true;
+            if (mode === 'fixed-practice') gameState.hasStartedFixedPractice = true;
+            if (mode === 'variable-practice') gameState.hasStartedVariablePractice = true;
             
             // Reset State
             gameState.mode = mode;
             gameState.isRunning = true;
             gameState.isPaused = false;
-            gameState.currentRound = 0; // nextRound() will increment this to 1
+            gameState.isSessionComplete = false; 
+            gameState.currentRound = 0; 
             gameState.totalRounds = totalRounds;
             gameState.results = [];
             
-            // Prepare Variable Intervals if needed (32)
-            if (mode === 'variable-practice' || mode === 'variable-test') {
+            if (mode === 'variable-practice') {
                 gameState.intervalArray = randomizeArray(VARIABLE_INTERVALS_MS);
                 gameState.intervalIndex = 0;
-                // For a single test round, use only the first randomized value
-                if (totalRounds === SINGLE_ROUND) {
-                    gameState.intervalArray = [gameState.intervalArray[0]];
-                }
             } else {
                 gameState.intervalArray = [];
                 gameState.intervalIndex = 0;
-                if (totalRounds === SINGLE_ROUND) {
-                    gameState.totalRounds = SINGLE_ROUND;
-                }
             }
 
             // UI updates
             btnPauseResume.disabled = false;
-            btnPauseResume.textContent = '⏸';
             updateModeButtons();
             
-            // Start the first round
             nextRound(); 
         }
 
         /**
-         * Cleans up after a session and saves results.
+         * Core function to handle a user click or spacebar press.
          */
-        function endSession() {
-            clearAllTimers();
-            gameState.isRunning = false;
-            gameState.isWaitingForCue = false;
-            gameState.isWaitingForReaction = false;
-            
-            // UI updates
-            btnPauseResume.disabled = true;
-            countdownText.textContent = 'Complete!';
-            updateStatus('Session Complete. View Results.', 'text-green-700');
-            updateModeButtons();
-            
-            // Save results (calls the imported Firebase function)
-            window.saveResults(gameState.mode, gameState.totalRounds, gameState.results);
-            
-            // Automatically show results for the completed session
-            window.displayAllResults();
+        window.handleReaction = function(event) {
+            if (gameState.isPaused || !gameState.isRunning || gameState.isSessionComplete) return;
+
+            if (gameState.isWaitingForReaction) {
+                handleHit();
+            } else if (gameState.isWaitingForCue) {
+                handleFalseStart();
+            } else {
+                console.log("Reaction ignored. Not cue or reaction phase.");
+            }
         }
+
 
         // --- Event Listeners and Initialization ---
 
-        // Participant Modal Submission (2)
+        // Participant Modal Submission
         participantForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const formData = new FormData(e.target);
             
-            // Input Validation
             const fullName = formData.get('fullName').trim();
             const gradeLevel = parseInt(formData.get('gradeLevel'));
             
-            if (!/^[A-Za-z\s]+$/.test(fullName) || fullName.length < 2) {
-                // In a real app, this would be an inline error message, but for simple validation:
-                console.error("Please enter a valid full name (letters and spaces only).");
-                return;
-            }
-            if (gradeLevel < 1 || gradeLevel > 12) {
-                console.error("Grade level must be between 1 and 12.");
-                return;
+            nameErrorDisplay.classList.add('hidden'); // Clear previous errors
+
+            // UPDATED: Name validation with explicit feedback
+            const nameRegex = /^[A-Za-z\s.'-]+$/; 
+            
+            if (fullName.length < 2) {
+                nameErrorDisplay.textContent = "Please enter your full name (at least two characters).";
+                nameErrorDisplay.classList.remove('hidden');
+                return; 
             }
             
-            // Store Participant Info
+            if (!nameRegex.test(fullName)) {
+                nameErrorDisplay.textContent = "Name contains invalid characters. Use only letters, spaces, hyphens, apostrophes, or periods.";
+                nameErrorDisplay.classList.remove('hidden');
+                return; 
+            }
+            
+            if (gradeLevel < 1 || gradeLevel > 12) {
+                // If a grade error occurs, we still only use console.error for consistency, 
+                // as the user only requested changes for the name field.
+                console.error("Grade level out of range.");
+                return; 
+            }
+            
             gameState.participant = {
                 fullName: fullName,
                 gradeLevel: gradeLevel,
@@ -786,35 +916,37 @@
 
             infoModal.classList.add('hidden');
             countdownText.textContent = 'Welcome';
-            updateStatus('Ready');
+            updateStatus('Ready. Choose a Training Set.');
+            updateModeButtons(); 
         });
 
         // Mode Buttons Click
         document.querySelectorAll('.btn-mode').forEach(button => {
             button.addEventListener('click', (e) => {
+                if (e.target.disabled) return; 
+
                 const id = e.target.id;
                 let mode, rounds;
 
-                if (id === 'btn-fixed-practice') { // 45. Training Set A
+                if (id === 'btn-fixed-practice') { 
                     mode = 'fixed-practice';
                     rounds = PRACTICE_ROUNDS;
-                } else if (id === 'btn-variable-practice') { // 46. Training Set B
+                } else if (id === 'btn-variable-practice') { 
                     mode = 'variable-practice';
                     rounds = PRACTICE_ROUNDS;
-                } else if (id === 'btn-test-variable') { // 47. Reaction Test 1
+                } else if (id === 'btn-test-variable') { 
                     mode = 'variable-test';
                     rounds = SINGLE_ROUND; 
-                } else if (id === 'btn-test-fixed') { // 48. Reaction Test 2
+                } else if (id === 'btn-test-fixed') { 
                     mode = 'fixed-test';
                     rounds = SINGLE_ROUND; 
-                } else {
+                } else { // Removed test-training condition
                     return;
                 }
 
                 if (gameState.participant) {
                     startSession(mode, rounds);
                 } else {
-                    // Show custom message box instead of alert/confirm
                     countdownText.textContent = "Please provide participant info first.";
                     updateStatus('Start Experiment Required', 'text-red-500');
                     infoModal.classList.remove('hidden');
@@ -825,33 +957,36 @@
         // Pause/Resume Button
         btnPauseResume.addEventListener('click', togglePause);
 
-        // View Results Button (49)
+        // View Results Button 
         btnResults.addEventListener('click', () => {
-             // Fetch and display results (calls the imported Firebase function)
-            window.displayAllResults();
+            window.showAllHistoricalResults();
         });
 
-        // Reaction Area Click (3)
+        // Reaction Area Click 
         reactionBox.addEventListener('click', window.handleReaction);
 
-        // Global Spacebar Listener (3)
+        // Global Spacebar Listener
         document.onkeydown = function(e) {
-            // Check if spacebar is pressed
             if (e.key === ' ' || e.key === 'Spacebar') {
-                // Check if an input field is focused (prevent default Spacebar action on input)
                 if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'BUTTON') {
-                    return; // Allow input fields and buttons to process the spacebar
+                    return;
                 }
-                
-                e.preventDefault(); // Prevent scrolling
-                window.handleReaction(e); // Process as a reaction
+                e.preventDefault(); 
+                window.handleReaction(e); 
             }
         };
 
-        // Initial UI setup (42)
+        // --- Tab Focus/Blur Handlers (Pause on Blur, Manual Resume) ---
+        window.addEventListener('blur', () => {
+            if (gameState.isRunning && !gameState.isPaused) {
+                // Auto-pause when tab loses focus
+                togglePause(); 
+            }
+        });
+        
+        // Initial UI setup
         updateStatus('Ready');
         updateModeButtons();
-        // The info modal starts visible as per requirement (2)
     </script>
 </body>
 </html>
