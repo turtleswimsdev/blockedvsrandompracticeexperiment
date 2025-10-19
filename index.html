@@ -99,7 +99,7 @@
             <button id="btn-test-fixed" class="btn-mode bg-gray-700 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-200 disabled:opacity-50">
                 Reaction Test 2
             </button>
-            <!-- RESULTS BUTTON - Now always visible and enabled -->
+            <!-- RESULTS BUTTON - Always visible and enabled -->
             <button id="btn-results" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-200">
                 View Results
             </button>
@@ -168,9 +168,6 @@
                     <button id="btn-download-csv" onclick="window.downloadCSV()" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 disabled:opacity-50" disabled>
                         Download CSV
                     </button>
-                    <p class="text-xs text-gray-500 mt-1 max-w-xs">
-                        This file is an export copy. The original data is securely stored in your browser.
-                    </p>
                 </div>
 
                 <!-- Close Button -->
@@ -237,18 +234,7 @@
                 return [];
             }
         }
-
-        /**
-         * Appends a new session's results to the local storage.
-         * @param {Object} sessionData - The complete session object to save.
-         */
-        function saveLocalSession(sessionData) {
-            const sessions = loadLocalResults();
-            sessions.push(sessionData);
-            localStorage.setItem('reactionTrainerSessions', JSON.stringify(sessions));
-            console.log("Session saved. Total sessions now:", sessions.length);
-        }
-
+        
         // --- 3.A. Game Constants ---
         const FIXED_INTERVAL_MS = 3500; 
         const PRACTICE_ROUNDS = 30; 
@@ -280,10 +266,11 @@
         const fullNameInput = document.getElementById('full-name');
         const nameErrorDisplay = document.getElementById('name-error');
 
-        // --- Game State (Updated with sequential flags) ---
+        // --- Game State (Updated with sequential flags and session ID) ---
         window.gameState = {
             participant: null, 
             mode: 'none', 
+            sessionId: null, // New: Unique ID for the current session
             isRunning: false,
             isPaused: false,
             isWaitingForCue: false,
@@ -338,19 +325,55 @@
             });
             gameState.timers = { countdown: null, cue: null, timeout: null, delay: null };
         }
+        
+        /**
+         * Saves or updates the current session data in local storage.
+         * Called after every round completion or at the beginning/end of a session.
+         * @param {boolean} isComplete - True if the session has finished all rounds.
+         */
+        function saveOrUpdateSession(isComplete) {
+            if (!gameState.sessionId) return; // Must have an ID
+
+            const sessions = loadLocalResults();
+            const sessionData = {
+                id: gameState.sessionId, 
+                participant: gameState.participant, 
+                mode: gameState.mode,
+                totalRounds: gameState.totalRounds,
+                timestamp: new Date().toISOString(), 
+                results: gameState.results,
+                isComplete: isComplete, 
+                currentRoundNumber: gameState.currentRound // Current progress
+            };
+
+            const existingIndex = sessions.findIndex(s => s.id === gameState.sessionId);
+
+            if (existingIndex !== -1) {
+                // Update existing session (in-progress or final save)
+                sessions[existingIndex] = sessionData;
+            } else {
+                // New session (should only happen once per session start)
+                sessions.push(sessionData);
+            }
+
+            localStorage.setItem('reactionTrainerSessions', JSON.stringify(sessions));
+            console.log(`Session ${gameState.sessionId} checkpointed. Complete: ${isComplete}, Rounds: ${gameState.currentRound}`);
+        }
+
 
         // --- UI State Management ---
 
         function updateModeButtons() {
             const disableAllModes = gameState.isRunning || gameState.isPaused;
+            
+            // --- Exclusive Training Logic ---
+            const hasChosenTraining = gameState.hasStartedFixedPractice || gameState.hasStartedVariablePractice;
+            
+            btnFixedPractice.disabled = disableAllModes || gameState.hasStartedVariablePractice;
+            btnVariablePractice.disabled = disableAllModes || gameState.hasStartedFixedPractice;
 
-            // Training sets can only be started if none have started yet
-            const hasStartedAnyTraining = gameState.hasStartedFixedPractice || gameState.hasStartedVariablePractice;
-            
-            btnFixedPractice.disabled = disableAllModes || hasStartedAnyTraining;
-            btnVariablePractice.disabled = disableAllModes || hasStartedAnyTraining;
-            
-            // Test 1 requires training completion
+            // --- Sequential Test Logic ---
+            // Test 1 requires EITHER training completion (A OR B)
             btnTestVariable.disabled = disableAllModes || !gameState.hasCompletedTraining || gameState.hasCompletedTest1;
             
             // Test 2 requires Test 1 completion
@@ -374,25 +397,25 @@
                 return;
             }
 
-            // Check what modes have been started/completed
-            const modes = allSessions.map(s => s.mode);
+            // Check what modes have been completed (only complete sessions count for unlocks)
+            const completedModes = allSessions.filter(s => s.isComplete).map(s => s.mode);
             
-            const hasFixed = modes.includes('fixed-practice');
-            const hasVariable = modes.includes('variable-practice');
-            const hasTest1 = modes.includes('variable-test');
+            const hasFixedCompleted = completedModes.includes('fixed-practice');
+            const hasVariableCompleted = completedModes.includes('variable-practice');
+            const hasTest1Completed = completedModes.includes('variable-test');
 
-            gameState.hasStartedFixedPractice = hasFixed;
-            gameState.hasStartedVariablePractice = hasVariable;
+            // Check if *any* session (even incomplete) of a type was started to enforce the exclusive training rule
+            const allModesStarted = allSessions.map(s => s.mode);
             
-            // If both training sets exist (even if only one round was saved for one, it's considered started)
-            if (hasFixed && hasVariable) {
-                 gameState.hasCompletedTraining = true;
-            }
+            gameState.hasStartedFixedPractice = allModesStarted.includes('fixed-practice');
+            gameState.hasStartedVariablePractice = allModesStarted.includes('variable-practice');
+            
+            // Sequential Unlocking Logic:
+            // 1. Training is complete if EITHER fixed or variable practice session is completed.
+            gameState.hasCompletedTraining = hasFixedCompleted || hasVariableCompleted;
 
-            // If Test 1 (Variable Test) exists
-            if (hasTest1) {
-                gameState.hasCompletedTest1 = true;
-            }
+            // 2. Test 1 is complete if a variable-test session is completed.
+            gameState.hasCompletedTest1 = hasTest1Completed;
 
             updateModeButtons(); 
         }
@@ -485,8 +508,8 @@
             gameState.isWaitingForCue = false;
             gameState.isWaitingForReaction = false;
             
-            // --- CRITICAL STEP: Save results locally ---
-            window.saveResults(gameState.mode, gameState.totalRounds, gameState.results);
+            // --- CRITICAL STEP: Save final results and mark complete ---
+            saveOrUpdateSession(true);
 
             // Re-check and restore state to enable the *next* sequential test button
             checkAndRestoreState(); 
@@ -495,10 +518,11 @@
             let statusColor = '';
             
             if (gameState.mode === 'fixed-practice' || gameState.mode === 'variable-practice') { 
-                message = 'Training Complete!';
+                // Training complete, Test 1 is now unlocked
+                message = `${formatMode(gameState.mode)} Complete! Reaction Test 1 Unlocked.`;
                 statusColor = 'text-green-700';
             } else if (gameState.mode === 'variable-test') {
-                message = 'Test 1 Complete!';
+                message = 'Reaction Test 1 Complete! Reaction Test 2 Unlocked.';
                 statusColor = 'text-green-700';
             } else if (gameState.mode === 'fixed-test') {
                 message = 'All Tests Complete!';
@@ -523,6 +547,8 @@
                 rt: reactionTime,
                 status: 'HIT'
             });
+            
+            saveOrUpdateSession(false); // Checkpoint after round
 
             reactionBox.classList.remove('flash-cue');
             countdownText.textContent = `${reactionTime.toFixed(0)} ms`;
@@ -544,6 +570,8 @@
                 rt: null,
                 status: 'FALSE START'
             });
+            
+            saveOrUpdateSession(false); // Checkpoint after round
 
             countdownText.textContent = 'FALSE START';
             reactionBox.classList.add('bg-red-400', 'text-white');
@@ -569,6 +597,8 @@
                 rt: null,
                 status: 'MISSED'
             });
+            
+            saveOrUpdateSession(false); // Checkpoint after round
 
             countdownText.textContent = 'MISSED';
             reactionBox.classList.remove('flash-cue');
@@ -609,10 +639,8 @@
 
             clearAllTimers();
 
-            // Note: We track start status locally to control button access for the current session flow
-            if (mode === 'fixed-practice') gameState.hasStartedFixedPractice = true;
-            if (mode === 'variable-practice') gameState.hasStartedVariablePractice = true;
-            
+            // 1. Setup new session state
+            gameState.sessionId = crypto.randomUUID(); // Assign new ID
             gameState.mode = mode;
             gameState.isRunning = true;
             gameState.isPaused = false;
@@ -629,26 +657,19 @@
                 gameState.intervalIndex = 0;
             }
 
+            // 2. Track which path was chosen (for button disabling)
+            if (mode === 'fixed-practice') gameState.hasStartedFixedPractice = true;
+            if (mode === 'variable-practice') gameState.hasStartedVariablePractice = true;
+
             btnPauseResume.disabled = false;
             updateModeButtons();
             
+            // 3. Save initial state (round 0) to register the session
+            saveOrUpdateSession(false);
+
             nextRound(); // Start the first round
         }
         
-        // --- Session Saving Logic ---
-        window.saveResults = function(mode, totalRounds, results) {
-            const dataToSave = {
-                id: crypto.randomUUID(), 
-                participant: gameState.participant, 
-                mode: mode,
-                totalRounds: totalRounds,
-                timestamp: new Date().toISOString(), 
-                results: results
-            };
-            
-            saveLocalSession(dataToSave);
-        };
-
         function formatMode(mode) {
             // Participant-friendly names that hide "fixed" or "variable" details
             switch (mode) {
@@ -662,19 +683,17 @@
         
         /**
          * Converts all stored data into a clean, simplified CSV format and triggers a download.
-         * Excludes Session ID, Timestamp, and Cue Interval. Fixes misalignment.
          */
         window.downloadCSV = function() {
             const allSessions = loadLocalResults();
             if (allSessions.length === 0) {
-                // Use custom modal instead of alert if possible, but for simplicity, console log.
                 console.warn("No results to download."); 
                 return;
             }
 
             // New, simplified CSV Header
             const header = [
-                "Participant Name", "Grade Level", "Sex", "Session Mode", 
+                "Participant Name", "Grade Level", "Sex", "Session Mode", "Session Completion Status",
                 "Round Number", "RT (ms)", "Status"
             ];
             let csv = header.join(',') + '\n';
@@ -682,12 +701,11 @@
             allSessions.forEach(session => {
                 const participant = session.participant || {}; 
                 
-                // Base participant and session info (fixed per session)
-                // Use a standard quote-escaping technique for names and modes
                 const name = (participant.fullName || 'N/A').replace(/"/g, '""'); 
                 const grade = participant.gradeLevel || 'N/A'; 
                 const sex = participant.sex || 'N/A';
                 const mode = formatMode(session.mode || 'N/A').replace(/"/g, '""'); 
+                const completionStatus = session.isComplete ? 'Complete' : 'In Progress';
 
                 (session.results || []).forEach(result => {
                     const rtDisplay = result.rt !== null ? result.rt.toFixed(0) : 'N/A';
@@ -697,6 +715,7 @@
                         grade, 
                         sex,
                         `"${mode}"`, 
+                        completionStatus,
                         result.round || 'N/A',
                         rtDisplay,
                         result.status || 'N/A'
@@ -758,9 +777,9 @@
 
             const modeOrder = {
                 'fixed-practice': 1,
-                'variable-practice': 1,
-                'variable-test': 2,
-                'fixed-test': 3
+                'variable-practice': 2, 
+                'variable-test': 3,
+                'fixed-test': 4
             };
 
             // Sort all sessions first by type, then by timestamp
@@ -784,13 +803,12 @@
             // --- 1. Calculate Summary Stats ---
             let participantName = 'N/A';
             if (gameState.participant && gameState.participant.fullName) {
-                participantName = gameState.participant.fullName; // Use current participant if available
+                participantName = gameState.participant.fullName; 
             } else if (allSessions.length > 0 && allSessions[0].participant && allSessions[0].participant.fullName) {
-                participantName = allSessions[0].participant.fullName; // Fallback to saved data
+                participantName = allSessions[0].participant.fullName; 
             }
             
             allSessions.forEach(session => {
-                // Defensive access of results array
                 const results = session.results || [];
                 
                 results.forEach(result => {
@@ -798,7 +816,7 @@
                         allRts.push(result.rt);
                     }
                 });
-                totalRounds += session.totalRounds || 0; // Use 0 if totalRounds is missing
+                totalRounds += session.totalRounds || 0; 
                 totalHits += results.filter(r => r.status === 'HIT').length;
                 totalFalseStarts += results.filter(r => r.status === 'FALSE START').length;
                 totalMissed += results.filter(r => r.status === 'MISSED').length;
@@ -809,7 +827,7 @@
             // --- 2. Update Summary Area ---
             document.getElementById('participant-name').textContent = participantName; 
             document.getElementById('results-total-sessions').textContent = allSessions.length;
-            document.getElementById('results-total-rounds').textContent = totalRounds;
+            document.getElementById('results-total-rounds').textContent = allRts.length; // Total HITs as total relevant rounds
             document.getElementById('results-avg-rt').textContent = overallAvgRt;
             document.getElementById('results-hits').textContent = totalHits;
             document.getElementById('results-false-starts').textContent = totalFalseStarts;
@@ -824,12 +842,22 @@
                 const sessionHits = results.filter(r => r.status === 'HIT');
                 const sessionAvgRt = sessionHits.length > 0 ? (sessionHits.map(r => r.rt).reduce((a, b) => a + b, 0) / sessionHits.length).toFixed(0) : '--';
                 
+                // Determine header status and styling
+                let progressStatus;
+                let headerClass;
+                if (session.isComplete) {
+                    progressStatus = 'COMPLETE';
+                    headerClass = 'bg-blue-100 border-blue-400';
+                } else {
+                    progressStatus = `IN PROGRESS (${session.currentRoundNumber || 0}/${session.totalRounds})`;
+                    headerClass = 'bg-orange-100 border-orange-400';
+                }
+
                 const headerRow = resultsTableBody.insertRow();
-                headerRow.className = 'text-sm bg-blue-100 font-bold border-t-4 border-blue-400';
-                // Removed Date/Timestamp from the display header
+                headerRow.className = `text-sm font-bold border-t-4 ${headerClass}`;
                 headerRow.innerHTML = `
                     <td class="px-3 py-2 whitespace-nowrap" colspan="4">
-                        ${displayMode} (Session Avg RT: ${sessionAvgRt} ms)
+                        ${displayMode} (Status: ${progressStatus}) - (Current Avg RT: ${sessionAvgRt} ms)
                     </td>
                 `;
 
@@ -917,7 +945,7 @@
 
             infoModal.classList.add('hidden');
             countdownText.textContent = 'Welcome';
-            updateStatus('Ready. Choose a Training Set.');
+            updateStatus('Ready. Choose a Training Set (A or B).');
             checkAndRestoreState(); // Re-check state after a new participant is entered
         });
 
