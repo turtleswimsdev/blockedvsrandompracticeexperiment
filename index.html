@@ -3,858 +3,855 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 1. Page Title -->
     <title>Anticipation vs. Reaction Time Training</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Grayscale Theme Setup */
+        /* 2.A. Color Variables (Custom CSS) */
         :root {
             --color-bg-light: #f3f4f6; /* gray-100 */
             --color-bg-mid: #e5e7eb; /* gray-200 */
             --color-text-dark: #1f2937; /* gray-800 */
-            --color-flash-blue: #3b82f6; /* blue-500 */
+            --color-flash-blue: #3b82f6; /* blue-500 - Note: This is still used for the cue flash color */
             --color-border: #9ca3af; /* gray-400 */
         }
 
-        html, body, #app {
-            height: 100%;
-            margin: 0;
-            font-family: 'Inter', sans-serif;
-            background-color: var(--color-bg-light);
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Main Reaction Area Styling */
-        #reaction-area-container {
-            flex-grow: 1; /* Makes the container fill the remaining space */
-            padding: 1rem;
-            display: flex;
-            align-items: center; /* Center content vertically */
-            justify-content: center; /* Center content horizontally */
-            transition: all 0.3s ease-out; /* For smooth transitions */
-            user-select: none;
-            cursor: pointer;
-        }
-
-        /* Large Clickable Box */
+        /* 2.B. Reaction Box and Text Styling */
         #reaction-box {
+            /* 17. Size & Constraint */
             width: 100%;
             height: 100%;
-            max-width: 800px; /* Max size for desktop view */
-            max-height: 80vh; /* Don't exceed screen height */
+            max-width: 800px;
+            max-height: 80vh; 
+            /* 18. Default Style */
             background-color: var(--color-bg-mid);
             border: 4px solid var(--color-border);
             border-radius: 1rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: var(--color-text-dark);
+            /* 19. Shadow */
+            box-shadow: 0 10px 15px 3px rgba(0, 0, 0, 0.1), 0 4px 6px 2px rgba(0, 0, 0, 0.05);
+            /* 20. Default Content Text */
             font-size: 3rem;
             font-weight: 800;
-            line-height: 1;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            transition: background-color 0.1s ease-in;
-            opacity: 1; /* Start visible */
+            color: var(--color-text-dark);
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.1s ease;
         }
 
-        /* Countdown Text inside the box */
-        #countdown-text {
-            font-size: 8rem;
-            color: var(--color-text-dark);
-        }
-        
-        /* Blue Flash state (Cue) */
+        /* 2.C. Blue Cue State (.flash-cue) */
         .flash-cue {
-            background-color: var(--color-flash-blue) !important;
-            color: white !important;
+            /* 23. background-color */
+            background-color: var(--color-flash-blue) !important; 
+            /* 24. color */
+            color: white !important; 
+            /* 25. border-color */
             border-color: var(--color-flash-blue) !important;
         }
-        
-        /* Modal Styling for Results & Info */
-        .modal {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 100;
-        }
-        .modal-content {
-            background: white; padding: 24px; border-radius: 12px; max-width: 90%; width: 600px; max-height: 90%; overflow: auto;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-        }
-        .modal-content pre {
-            white-space: pre-wrap;
-            font-family: monospace;
-            font-size: 0.875rem;
-            line-height: 1.5;
-            background: #f1f5f9; /* gray-100 */
-            padding: 12px;
-            border-radius: 6px;
-            border: 1px solid #e2e8f0; /* gray-200 */
+
+        /* 21. Countdown Text Size */
+        #countdown-text {
+            font-size: 8rem;
         }
 
-        /* Grayscale button styling */
-        .gray-button {
-            padding: 0.5rem 1rem;
-            background-color: #374151; /* gray-700 */
-            color: white;
-            border-radius: 0.5rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            transition: background-color 0.15s;
+        /* 9. Main Application Layout */
+        body, html {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--color-bg-light);
         }
-        .gray-button:hover:not(:disabled) {
-            background-color: #4b5563; /* gray-600 */
-        }
-        .gray-button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
     </style>
 </head>
-<body>
-    <div id="app" class="flex flex-col h-screen">
-        
-        <!-- Status Bar (Pause/Resume, Current Status, Last Result) -->
-        <div class="bg-white border-b border-gray-200 flex items-center justify-between px-4 py-3 shadow-md relative h-16">
-            
-            <!-- Left: Pause/Resume Button (with symbols) -->
-            <button id="btn-pause-resume" class="gray-button text-2xl p-1 w-10 h-10 flex items-center justify-center bg-gray-500 hover:bg-gray-600" 
-                    onclick="window.togglePause()" disabled>
-                ⏸
+<body class="flex flex-col h-screen">
+
+    <!-- 2.B. Status Bar (h-16) -->
+    <header class="h-16 flex items-center justify-between px-6 z-10 bg-white border-b border-gray-200 shadow-md relative">
+        <div id="last-rt-display" class="text-sm font-semibold text-gray-600">
+            Last RT: -- ms
+        </div>
+
+        <!-- 12. Center Status (#status-display) -->
+        <div id="status-display" class="text-lg font-bold text-gray-800 absolute left-1/2 transform -translate-x-1/2">
+            Ready
+        </div>
+
+        <!-- 13. Pause/Resume Button (#btn-pause-resume) -->
+        <button id="btn-pause-resume" 
+                class="w-10 h-10 text-2xl bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition duration-150 shadow-inner disabled:opacity-50"
+                disabled
+                title="Pause/Resume Game">
+            ⏸
+        </button>
+    </header>
+
+    <!-- Options Bar -->
+    <nav id="options-bar" class="p-3 bg-gray-50 border-b border-gray-200">
+        <!-- 15. Button Layout -->
+        <div class="flex gap-3 flex-wrap justify-center">
+            <!-- Grayscale Button Styling Applied to all mode buttons -->
+            <button id="btn-fixed-practice" class="btn-mode bg-gray-700 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-200 disabled:opacity-50">
+                Training Set A
             </button>
-            
-            <!-- Center: Current Mode/Round Status -->
-            <div id="status-display" class="absolute left-1/2 transform -translate-x-1/2 text-lg font-semibold text-gray-800">Ready</div>
-            
-            <!-- Right: Last Reaction Time Result -->
-            <div class="text-right">
-                <div class="text-sm text-gray-500">Last RT:</div>
-                <div id="last-result" class="text-xl font-bold text-gray-900">-</div>
-            </div>
+            <button id="btn-variable-practice" class="btn-mode bg-gray-700 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-200 disabled:opacity-50">
+                Training Set B
+            </button>
+            <button id="btn-test-variable" class="btn-mode bg-gray-700 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-200 disabled:opacity-50">
+                Reaction Test 1
+            </button>
+            <button id="btn-test-fixed" class="btn-mode bg-gray-700 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-200 disabled:opacity-50">
+                Reaction Test 2
+            </button>
+            <button id="btn-results" class="bg-gray-700 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-200">
+                View Results
+            </button>
         </div>
+    </nav>
 
-        <!-- Option Buttons (Top Row) -->
-        <div class="p-3 bg-gray-50 flex gap-3 flex-wrap justify-center border-b border-gray-200">
-            <button id="btn-fixed-practice" class="gray-button" onclick="window.startGame('fixed_practice')">Training Set A</button>
-            <button id="btn-variable-practice" class="gray-button" onclick="window.startGame('variable_practice')">Training Set B</button>
-            <button id="btn-test-variable" class="gray-button" onclick="window.startGame('test_variable')">Reaction Test 1</button>
-            <button id="btn-test-fixed" class="gray-button" onclick="window.startGame('test_fixed')">Reaction Test 2</button>
-            <button id="btn-results" class="gray-button bg-gray-600 hover:bg-gray-700" onclick="window.displayResultsModal()">View Results</button>
+    <!-- 16. Reaction Area Container -->
+    <main id="reaction-area-container" class="flex-1 flex items-center justify-center p-4">
+        <!-- Reaction Box -->
+        <div id="reaction-box" class="flex items-center justify-center text-center p-8" onclick="window.handleReaction(event)">
+            <!-- 44. Initial Content Text -->
+            <span id="countdown-text">Welcome</span>
         </div>
+    </main>
 
-        <!-- Main Reaction Area -->
-        <div id="reaction-area-container" class="flex-1">
-            <div id="reaction-box">
-                <span id="countdown-text">Welcome</span>
+    <!-- Results Modal (Hidden) -->
+    <div id="results-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center">
+        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <h2 class="text-2xl font-bold mb-4 border-b pb-2">Results for <span id="participant-name"></span></h2>
+            <div class="text-sm mb-4">
+                <p>Mode: <span id="results-mode" class="font-medium"></span> | Total Rounds: <span id="results-total-rounds" class="font-medium"></span></p>
+                <p>Average RT: <span id="results-avg-rt" class="font-medium"></span> ms | Total Hits: <span id="results-hits" class="font-medium"></span> | False Starts: <span id="results-false-starts" class="font-medium"></span> | Missed: <span id="results-missed" class="font-medium"></span></p>
             </div>
+            <table id="results-table" class="min-w-full divide-y divide-gray-200 mb-6">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Round</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Interval (ms)</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reaction Time (ms)</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200" id="results-table-body">
+                    <!-- Results rows will be inserted here -->
+                </tbody>
+            </table>
+            <button onclick="document.getElementById('results-modal').classList.add('hidden')" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg transition duration-200">Close</button>
         </div>
     </div>
 
-    <!-- Participant Info Modal (NEW) -->
-    <div id="info-modal" class="modal" style="display: flex;">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4">Participant Information</h2>
-            <div class="space-y-4">
-                <div>
-                    <label for="input-name" class="block text-sm font-medium text-gray-700 mb-1">Full Name (Letters Only)</label>
-                    <input type="text" id="input-name" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="John Doe">
-                    <p id="name-error" class="text-xs text-red-500 mt-1 hidden">Please enter letters and spaces only.</p>
+    <!-- 2. Initial State: Participant Information Modal -->
+    <div id="info-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center">
+        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
+            <!-- 50. Info Modal Title -->
+            <h2 class="text-2xl font-bold mb-6">Participant Information</h2>
+            <form id="participant-form">
+                <div class="mb-4">
+                    <!-- 51. Info Modal Name Label -->
+                    <label for="full-name" class="block text-sm font-medium text-gray-700 mb-1">Full Name (Letters Only)</label>
+                    <input type="text" id="full-name" name="fullName" pattern="[A-Za-z\s]+" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-blue-500 focus:border-blue-500">
                 </div>
-                <div>
-                    <label for="input-grade" class="block text-sm font-medium text-gray-700 mb-1">Grade Level (Number Only, 1-12)</label>
-                    <input type="number" id="input-grade" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" min="1" max="12" placeholder="e.g., 10">
-                    <p id="grade-error" class="text-xs text-red-500 mt-1 hidden">Please enter a valid number (1-12).</p>
+                <div class="mb-4">
+                    <!-- 52. Info Modal Grade Label -->
+                    <label for="grade-level" class="block text-sm font-medium text-gray-700 mb-1">Grade Level (Number Only, 1-12)</label>
+                    <input type="number" id="grade-level" name="gradeLevel" min="1" max="12" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-blue-500 focus:border-blue-500">
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Sex</label>
+                <div class="mb-6">
+                    <span class="block text-sm font-medium text-gray-700 mb-2">Sex</span>
+                    <!-- 53. Info Modal Sex Options -->
                     <div class="flex space-x-4">
                         <label class="inline-flex items-center">
-                            <input type="radio" name="sex" value="Male" class="form-radio text-blue-600 h-4 w-4">
+                            <input type="radio" name="sex" value="Male" required class="form-radio h-4 w-4 text-blue-600">
                             <span class="ml-2 text-gray-700">Male</span>
                         </label>
                         <label class="inline-flex items-center">
-                            <input type="radio" name="sex" value="Female" class="form-radio text-blue-600 h-4 w-4">
+                            <input type="radio" name="sex" value="Female" required class="form-radio h-4 w-4 text-blue-600">
                             <span class="ml-2 text-gray-700">Female</span>
                         </label>
                     </div>
-                    <p id="sex-error" class="text-xs text-red-500 mt-1 hidden">Please select an option.</p>
                 </div>
-            </div>
-            <div class="flex justify-end mt-6">
-                <button id="btn-start-experiment" class="gray-button px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed" 
-                        onclick="window.saveParticipantInfo()">
+                <!-- 54. Info Modal Button -->
+                <button id="btn-start-experiment" type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200 shadow-lg">
                     Start Experiment
                 </button>
-            </div>
+            </form>
         </div>
     </div>
-    
-    <!-- Results Modal -->
-    <div id="results-modal" class="modal" onclick="this.style.display='none'">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4">Experiment Results</h2>
-            <pre id="results-display"></pre>
-            <p id="submission-status" class="mt-4 text-sm text-gray-600 hidden">
-                Note: Results are currently saved in your browser only.
-            </p>
-            <div class="flex justify-end mt-6">
-                <button class="w-24 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition" 
-                        onclick="document.getElementById('results-modal').style.display='none'">
-                    Close
-                </button>
-            </div>
-        </div>
-    </div>
-    
-    <script>
-        // --- CONSTANTS ---
-        const FIXED_INTERVAL_MS = 3500;
-        const TEST_VARIABLE_MS = 4830;
-        const TEST_FIXED_MS = 3500;
-        const PRACTICE_ROUNDS = 30;
-        const SINGLE_ROUND = 1;
-        
-        // IMPORTANT: REPLACE THIS PLACEHOLDER URL with your Google Apps Script Web App URL
-        const GOOGLE_SCRIPT_URL = 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE'; 
 
-        // Variable Intervals (converted from seconds to milliseconds)
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, addDoc, collection, query, where, getDocs, onSnapshot, setLogLevel, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Global Variables (Mandatory) ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        // --- Game Setup ---
+        let app, db, auth, userId = null;
+
+        /**
+         * Initializes Firebase and authenticates the user.
+         */
+        async function initFirebase() {
+            try {
+                // setLogLevel('debug'); // Optional: uncomment for verbose logging
+                if (Object.keys(firebaseConfig).length === 0) {
+                    console.error("Firebase config is missing or empty.");
+                    // Fallback to a non-persistent state or prompt for configuration
+                    return;
+                }
+                
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        console.log("Firebase authenticated. User ID:", userId);
+                    } else {
+                        // This case should ideally not happen if auth is successful
+                        userId = crypto.randomUUID(); 
+                        console.warn("User not authenticated. Using random UUID for user ID.");
+                    }
+                });
+            } catch (error) {
+                console.error("Error initializing Firebase or signing in:", error);
+                userId = crypto.randomUUID(); // Fallback
+            }
+        }
+        
+        /**
+         * Saves the current session's results to Firestore.
+         * @param {string} mode - The practice/test mode name.
+         * @param {number} totalRounds - The total number of rounds attempted.
+         * @param {Array<Object>} results - The array of trial results.
+         */
+        window.saveResults = async function(mode, totalRounds, results) {
+            if (!db || !userId) {
+                console.error("Database not initialized or User ID not set. Cannot save.");
+                return;
+            }
+
+            const dataToSave = {
+                appId: appId,
+                userId: userId,
+                participant: window.gameState.participant, // Save participant info with results
+                mode: mode,
+                totalRounds: totalRounds,
+                timestamp: serverTimestamp(),
+                results: results
+            };
+
+            const path = `/artifacts/${appId}/users/${userId}/results`;
+            try {
+                await addDoc(collection(db, path), dataToSave);
+                console.log("Session results saved successfully.");
+            } catch (e) {
+                console.error("Error adding document: ", e);
+            }
+        };
+
+        /**
+         * Fetches and displays all past results for the current user.
+         */
+        window.displayAllResults = async function() {
+            if (!db || !userId) {
+                console.error("Database not initialized or User ID not set. Cannot view results.");
+                return;
+            }
+
+            const path = `/artifacts/${appId}/users/${userId}/results`;
+            const resultsTableBody = document.getElementById('results-table-body');
+            resultsTableBody.innerHTML = '<tr><td colspan="4" class="text-center py-4">Loading results...</td></tr>';
+            
+            try {
+                const q = query(collection(db, path));
+                const querySnapshot = await getDocs(q);
+                
+                if (querySnapshot.empty) {
+                    resultsTableBody.innerHTML = '<tr><td colspan="4" class="text-center py-4">No past results found.</td></tr>';
+                    return;
+                }
+
+                resultsTableBody.innerHTML = ''; // Clear loading message
+
+                // Get the most recent document
+                let latestData = null;
+                let latestTimestamp = 0;
+                
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const timestamp = data.timestamp ? data.timestamp.toMillis() : 0;
+                    if (timestamp > latestTimestamp) {
+                        latestTimestamp = timestamp;
+                        latestData = data;
+                    }
+                });
+                
+                if (latestData) {
+                    const data = latestData;
+                    const participantName = data.participant?.fullName || 'N/A';
+                    
+                    const hitCount = data.results.filter(r => r.status === 'HIT').length;
+                    const falseStartCount = data.results.filter(r => r.status === 'FALSE START').length;
+                    const missedCount = data.results.filter(r => r.status === 'MISSED').length;
+                    
+                    const hits = data.results.filter(r => r.status === 'HIT').map(r => r.rt);
+                    const avgRt = hits.length > 0 ? (hits.reduce((a, b) => a + b, 0) / hits.length).toFixed(2) : 'N/A';
+
+                    // Display summary for the latest session
+                    document.getElementById('participant-name').textContent = participantName;
+                    document.getElementById('results-mode').textContent = data.mode;
+                    document.getElementById('results-total-rounds').textContent = data.totalRounds;
+                    document.getElementById('results-avg-rt').textContent = avgRt;
+                    document.getElementById('results-hits').textContent = hitCount;
+                    document.getElementById('results-false-starts').textContent = falseStartCount;
+                    document.getElementById('results-missed').textContent = missedCount;
+
+                    data.results.forEach((result, index) => {
+                        const row = resultsTableBody.insertRow();
+                        row.className = 'text-sm ' + (index % 2 === 0 ? 'bg-white' : 'bg-gray-50');
+                        row.innerHTML = `
+                            <td class="px-3 py-2 whitespace-nowrap">${index + 1}</td>
+                            <td class="px-3 py-2 whitespace-nowrap">${result.interval}</td>
+                            <td class="px-3 py-2 whitespace-nowrap">${result.rt !== null ? result.rt.toFixed(0) : '--'}</td>
+                            <td class="px-3 py-2 whitespace-nowrap">
+                                <span class="${result.status === 'HIT' ? 'text-green-600 font-bold' : result.status === 'FALSE START' ? 'text-red-600 font-bold' : 'text-gray-500'}">${result.status}</span>
+                            </td>
+                        `;
+                    });
+                }
+
+
+                document.getElementById('results-modal').classList.remove('hidden');
+
+            } catch (error) {
+                console.error("Error fetching results: ", error);
+                resultsTableBody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-red-500">Error loading data.</td></tr>';
+            }
+        };
+
+        // Initialize Firebase on load
+        window.addEventListener('load', initFirebase);
+    </script>
+
+    <script>
+        // --- 3.A. Game Constants ---
+        const FIXED_INTERVAL_MS = 3500; // Fixed delay for Training Set A
+        const TEST_FIXED_MS = 3500; // Fixed delay for Reaction Test 2
+        const TEST_VARIABLE_MS = 4830; // Max fixed delay for Reaction Test 1 before variable is used
+        const PRACTICE_ROUNDS = 30; // Number of rounds for Practice Modes
+        const SINGLE_ROUND = 1; // Number of rounds for Test Modes
+        const MISSED_TIMEOUT_MS = 10000; // 10 seconds for Missed Trial Timeout
+        const POST_TRIAL_DELAY_MS = 1500; // Delay before next round
+
+        // --- 3.B. Variable Intervals (Mandatory Array) ---
         const VARIABLE_INTERVALS_MS = [
             1840, 2190, 3970, 5320, 2780, 4260, 1370, 3440, 2550, 5750,
             3690, 1220, 4580, 5010, 2070, 3120, 4970, 1660, 2900, 3830,
-            4330, 2450, 5190, 1080, 3570, 2360, 4810, 5440, 1930, 2680
+            2680, 4330, 2450, 5190, 1080, 3570, 2360, 4810, 5440, 1930
         ];
 
         // --- DOM Elements ---
-        const statusDisplayEl = document.getElementById('status-display');
-        const lastResultEl = document.getElementById('last-result');
-        const reactionBoxEl = document.getElementById('reaction-box');
-        const countdownTextEl = document.getElementById('countdown-text');
-        const resultsModalEl = document.getElementById('results-modal');
-        const resultsDisplayEl = document.getElementById('results-display');
-        const allButtons = document.querySelectorAll('.gray-button');
-        const pauseResumeBtn = document.getElementById('btn-pause-resume');
-        const submissionStatusEl = document.getElementById('submission-status');
-        
-        // NEW DEMOGRAPHICS ELEMENTS
-        const infoModalEl = document.getElementById('info-modal');
-        const inputNameEl = document.getElementById('input-name');
-        const inputGradeEl = document.getElementById('input-grade');
-        const nameErrorEl = document.getElementById('name-error');
-        const gradeErrorEl = document.getElementById('grade-error');
-        const sexErrorEl = document.getElementById('sex-error');
-        const startExperimentBtn = document.getElementById('btn-start-experiment');
-        
+        const infoModal = document.getElementById('info-modal');
+        const participantForm = document.getElementById('participant-form');
+        const reactionBox = document.getElementById('reaction-box');
+        const countdownText = document.getElementById('countdown-text');
+        const statusDisplay = document.getElementById('status-display');
+        const lastRtDisplay = document.getElementById('last-rt-display');
+        const btnPauseResume = document.getElementById('btn-pause-resume');
+        const btnFixedPractice = document.getElementById('btn-fixed-practice');
+        const btnVariablePractice = document.getElementById('btn-variable-practice');
+        const btnTestVariable = document.getElementById('btn-test-variable');
+        const btnTestFixed = document.getElementById('btn-test-fixed');
+        const btnResults = document.getElementById('btn-results');
+
         // --- Game State ---
-        let results = []; // Stores all reaction time data
-        let currentTrialIndex = 0;
-        let currentIntervals = []; // Array of delay times for the current mode
-        let cueStartTime = null; // Timestamp when the cue/flash started
-        let mode = 'idle'; // 'idle', 'countdown', 'waiting', 'flashing', 'complete', 'paused'
-        let timeoutHandle = null; // To clear any pending timeouts
-        let baseStatusText = ''; // Stores the base experiment description (e.g., "Training Set A")
-        let currentSessionID = crypto.randomUUID(); // Unique ID for this session/participant's *block*
-        
-        // STATE FOR EXCLUSIVITY
-        let hasStartedFixedPractice = false;
-        let hasStartedVariablePractice = false;
-        
-        // NEW: Participant demographic information
-        let participantInfo = {
-            fullName: '',
-            grade: null,
-            sex: '' // 'Male' or 'Female'
+        let gameState = {
+            participant: null, // Holds participant object
+            mode: 'none', 
+            isRunning: false,
+            isPaused: false,
+            isWaitingForCue: false,
+            isWaitingForReaction: false,
+            hasStartedFixedPractice: false, 
+            hasStartedVariablePractice: false, 
+            currentRound: 0,
+            totalRounds: 0,
+            intervalArray: [], 
+            intervalIndex: 0,
+            timers: {
+                countdown: null,
+                cue: null,
+                timeout: null,
+                delay: null
+            },
+            startTime: 0, 
+            cueTime: 0, 
+            results: []
         };
 
-        // --- Helper function for delays ---
-
-        function delay(ms) {
-            return new Promise(resolve => {
-                timeoutHandle = setTimeout(resolve, ms);
-            });
-        }
-
-        // --- UI UTILITIES ---
-
-        function updateStatusDisplay(status, lastRT = null) {
-            statusDisplayEl.textContent = status;
-            if (lastRT !== null) {
-                lastResultEl.textContent = `${(lastRT / 1000).toFixed(3)} s`;
-            }
-        }
-
-        function setButtonsDisabled(disabled) {
-            allButtons.forEach(btn => {
-                // Keep pause/results enabled for control, but only disable/enable others based on 'disabled' flag
-                if (btn.id !== 'btn-pause-resume' && btn.id !== 'btn-results') { 
-                    btn.disabled = disabled;
-                }
-                
-                // Enforce Exclusivity Rules when the experiment is NOT running (i.e., in idle/complete mode)
-                if (!disabled) { 
-                    if (btn.id === 'btn-fixed-practice' && hasStartedVariablePractice) {
-                        btn.disabled = true;
-                    }
-                    if (btn.id === 'btn-variable-practice' && hasStartedFixedPractice) {
-                        btn.disabled = true;
-                    }
-                }
-            });
-            
-            // Specific logic for pause/resume button based on mode
-            if (mode === 'idle' || mode === 'complete') {
-                pauseResumeBtn.disabled = true;
-            } else {
-                pauseResumeBtn.disabled = false;
-            }
-            
-            // Allow viewing results if participant info is collected, even if game is idle
-            if (participantInfo.fullName) {
-                document.getElementById('btn-results').disabled = false;
-            } else {
-                document.getElementById('btn-results').disabled = true;
-            }
-        }
+        // --- Utility Functions ---
         
-        function showBoxContent(html) {
-            reactionBoxEl.classList.remove('opacity-0');
-            reactionBoxEl.innerHTML = `<span id="countdown-text">${html}</span>`;
-            // Re-select the countdownTextEl since its content might be replaced
-            const newCountdownTextEl = document.getElementById('countdown-text');
-            if(newCountdownTextEl) newCountdownTextEl.textContent = html;
-        }
-
-        function hideBoxContent() {
-            reactionBoxEl.innerHTML = '';
-            reactionBoxEl.classList.add('opacity-0');
-        }
-
-        function startFlashCue() {
-            reactionBoxEl.classList.add('flash-cue');
-            cueStartTime = performance.now();
-            mode = 'flashing';
-        }
-
-        function stopFlashCue() {
-            reactionBoxEl.classList.remove('flash-cue');
-            cueStartTime = null;
-        }
-        
-        // --- PARTICIPANT INFO LOGIC ---
-
-        window.saveParticipantInfo = function() {
-            let isValid = true;
-            
-            // 1. Name Validation (Letters and spaces only)
-            const nameValue = inputNameEl.value.trim();
-            // Regex: only allows letters (a-z, A-Z) and spaces. Must not be empty.
-            if (!/^[a-zA-Z\s]+$/.test(nameValue) || nameValue === '') {
-                nameErrorEl.classList.remove('hidden');
-                isValid = false;
-            } else {
-                nameErrorEl.classList.add('hidden');
+        /**
+         * Fisher-Yates (Knuth) Shuffle for randomizing array elements.
+         */
+        function randomizeArray(array) {
+            let currentIndex = array.length, randomIndex;
+            let arr = [...array]; // Create a copy
+            while (currentIndex !== 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [arr[currentIndex], arr[randomIndex]] = [
+                    arr[randomIndex], arr[currentIndex]
+                ];
             }
-
-            // 2. Grade Validation (Number between 1 and 12)
-            const gradeValue = parseInt(inputGradeEl.value);
-            if (isNaN(gradeValue) || gradeValue < 1 || gradeValue > 12) {
-                gradeErrorEl.classList.remove('hidden');
-                isValid = false;
-            } else {
-                gradeErrorEl.classList.add('hidden');
-            }
-
-            // 3. Sex Validation
-            const sexEl = document.querySelector('input[name="sex"]:checked');
-            const sexValue = sexEl ? sexEl.value : '';
-            if (sexValue === '') {
-                sexErrorEl.classList.remove('hidden');
-                isValid = false;
-            } else {
-                sexErrorEl.classList.add('hidden');
-            }
-
-            if (isValid) {
-                participantInfo.fullName = nameValue;
-                participantInfo.grade = gradeValue;
-                participantInfo.sex = sexValue;
-                
-                // Hide the modal and enable the experiment buttons
-                infoModalEl.style.display = 'none';
-                setButtonsDisabled(false);
-                updateStatusDisplay(`Welcome, ${participantInfo.fullName}. Please select a training set.`);
-            }
+            return arr;
         }
-
-        function showInfoModal() {
-            infoModalEl.style.display = 'flex';
-            // Disable all experiment buttons until info is collected
-            document.getElementById('btn-fixed-practice').disabled = true;
-            document.getElementById('btn-variable-practice').disabled = true;
-            document.getElementById('btn-test-variable').disabled = true;
-            document.getElementById('btn-test-fixed').disabled = true;
-            document.getElementById('btn-results').disabled = true;
-            pauseResumeBtn.disabled = true;
-            startExperimentBtn.disabled = false; 
-        }
-
-        // --- PAUSE/RESUME LOGIC (Restart Round) ---
-
-        window.togglePause = function() {
-            if (mode === 'paused') {
-                resumeGame();
-            } else if (mode === 'countdown' || mode === 'waiting' || mode === 'flashing') {
-                pauseGame();
-            }
-        }
-
-        function pauseGame() {
-            if (mode === 'paused' || mode === 'idle' || mode === 'complete') return;
-
-            clearTimeout(timeoutHandle); // Stop any pending timeouts
-            
-            mode = 'paused';
-            pauseResumeBtn.textContent = '▶'; // Change to Resume symbol
-            updateStatusDisplay(`${baseStatusText} (PAUSED)`);
-            showBoxContent('PAUSED');
-            setButtonsDisabled(true); // Disable all except resume/results
-        }
-
-        async function resumeGame() {
-            if (mode !== 'paused') return;
-
-            // Set mode explicitly to prevent startRound from immediately returning.
-            mode = 'countdown'; 
-            
-            pauseResumeBtn.textContent = '⏸'; // Change to Pause symbol
-            setButtonsDisabled(false); // Enable buttons for the restarting round flow
-            
-            // Start the round again from the countdown (3, 2, 1)
-            startRound(); 
-        }
-
-        async function continueIntervalWait() {
-            const intervalToUse = currentIntervals[currentTrialIndex];
-            if (intervalToUse === undefined) {
-                console.error("Interval is undefined. Exiting.");
-                return;
-            }
-            
-            const currentRound = currentTrialIndex + 1;
-            const totalRounds = currentIntervals.length;
-            const roundText = `(Round ${currentRound}/${totalRounds})`;
-
-            // Update: Preserve base status when setting 'Waiting' status
-            updateStatusDisplay(`${baseStatusText} ${roundText} (Waiting for Cue...)`);
-            hideBoxContent(); // Hide content during the delay
-            mode = 'waiting';
-
-            await delay(intervalToUse);
-            if (mode === 'paused') return; // Check if paused during the delay
-
-            startFlashCue();
-            // Update: Preserve base status when setting 'CLICK NOW!' status
-            updateStatusDisplay(`${baseStatusText} ${roundText} (CLICK NOW!)`);
-            
-            // Set a long timeout to automatically record a 'MISSED' trial if user is too slow
-            timeoutHandle = setTimeout(() => {
-                handleReaction(false); 
-            }, 10000); // 10 second maximum reaction time
-        }
-
-        // --- CORE GAME LOGIC ---
-
-        window.startGame = function(newMode) {
-            if (mode !== 'idle' && mode !== 'complete') return;
-            
-            // Block start if participant info hasn't been saved (shouldn't happen if info modal is working)
-            if (!participantInfo.fullName) { 
-                showInfoModal(); 
-                return;
-            }
-
-            // Generate a new unique ID for the session when a new game starts
-            currentSessionID = crypto.randomUUID(); 
-
-            // Clear previous state and setup for new run
-            clearTimeout(timeoutHandle);
-            currentTrialIndex = 0;
-            mode = 'countdown';
-            setButtonsDisabled(true); // Disable buttons while running
-            stopFlashCue();
-            
-            // Determine the intervals and set the base status text
-            switch (newMode) {
-                case 'fixed_practice':
-                    currentIntervals = Array(PRACTICE_ROUNDS).fill(FIXED_INTERVAL_MS);
-                    baseStatusText = `Training Set A`; 
-                    updateStatusDisplay(`${baseStatusText} (Round 1/${PRACTICE_ROUNDS})`);
-                    hasStartedFixedPractice = true; // Set exclusivity flag
-                    break;
-                case 'variable_practice':
-                    currentIntervals = VARIABLE_INTERVALS_MS.slice(); // Use a copy
-                    currentIntervals.sort(() => Math.random() - 0.5); // Randomize intervals
-                    baseStatusText = `Training Set B`; 
-                    updateStatusDisplay(`${baseStatusText} (Round 1/${PRACTICE_ROUNDS})`);
-                    hasStartedVariablePractice = true; // Set exclusivity flag
-                    break;
-                case 'test_variable':
-                    currentIntervals = Array(SINGLE_ROUND).fill(TEST_VARIABLE_MS);
-                    baseStatusText = `Reaction Test 1: Novel Time`;
-                    updateStatusDisplay(`${baseStatusText} (Round 1/1)`);
-                    break;
-                case 'test_fixed':
-                    currentIntervals = Array(SINGLE_ROUND).fill(TEST_FIXED_MS);
-                    baseStatusText = `Reaction Test 2: Trained Time`;
-                    updateStatusDisplay(`${baseStatusText} (Round 1/1)`);
-                    break;
-                default:
-                    return; // Should not happen
-            }
-
-            // Store the mode type for result tracking
-            reactionBoxEl.dataset.mode = newMode;
-            pauseResumeBtn.textContent = '⏸'; // Reset pause button symbol
-            pauseResumeBtn.disabled = false;
-            
-            // Reset submission status on start
-            submissionStatusEl.textContent = 'Note: Results are currently saved in your browser only.';
-            submissionStatusEl.classList.remove('text-green-600', 'text-red-600');
-
-
-            // Start the first round
-            startRound();
-        }
-
-        function restartRound() {
-            // Only used for the anti-cheating mechanism (False Start)
-            if (mode === 'idle' || mode === 'complete') return;
-            clearTimeout(timeoutHandle);
-            stopFlashCue();
-            // Start round resets the mode and status to the correct countdown state
-            startRound(); 
-        }
-        
-        async function startRound() {
-            if (mode === 'paused') return; // Do not proceed if paused
-            
-            const currentRound = currentTrialIndex + 1;
-            const totalRounds = currentIntervals.length;
-            const roundText = `(Round ${currentRound}/${totalRounds})`;
-
-            try {
-                // 1. Countdown Phase (3, 2, 1, GO!)
-                mode = 'countdown';
-                for (let i = 3; i > 0; i--) {
-                    if (mode === 'paused') return; // Check pause state after each delay
-                    // Ensure status is correctly set on resume/restart before showing countdown number
-                    updateStatusDisplay(`${baseStatusText} ${roundText}`); 
-                    showBoxContent(i);
-                    await delay(1000);
-                }
-                if (mode === 'paused') return;
-                
-                // Final Countdown text is "GO!"
-                updateStatusDisplay(`${baseStatusText} ${roundText}`);
-                showBoxContent('GO!');
-                await delay(1000); // 1 second for "GO!"
-                if (mode === 'paused') return;
-                
-                // 2. Interval Wait Phase
-                await continueIntervalWait(); // This will handle setting 'waiting' mode and cue
-                
-            } catch (error) {
-                console.error("Round failed:", error);
-                if (mode !== 'complete' && mode !== 'paused') {
-                    updateStatusDisplay("Error occurred. Restarting.");
-                    resetGame();
-                }
-            }
-        }
-        
-        // Unified function to handle reaction (click or spacebar)
-        function handleReactionInput(currentTime) {
-            if (mode === 'paused') return; 
-
-            if (mode === 'flashing') {
-                // SUCCESSFUL REACTION
-                clearTimeout(timeoutHandle);
-                const rt_ms = currentTime - cueStartTime;
-                handleReaction(true, rt_ms);
-            } else if (mode === 'waiting' || mode === 'countdown') {
-                // FALSE START / EARLY INPUT (Anti-cheating)
-                const currentRound = currentTrialIndex + 1;
-                const totalRounds = currentIntervals.length;
-                
-                // Use the structured base status text for the temporary feedback
-                const falseStartStatus = `${baseStatusText} (Round ${currentRound}/${totalRounds}) (FALSE START!)`;
-                updateStatusDisplay(falseStartStatus); 
-
-                // Briefly flash the box red/gray for feedback before restarting
-                reactionBoxEl.classList.add('bg-red-400'); 
-                setTimeout(() => {
-                    reactionBoxEl.classList.remove('bg-red-400');
-                    restartRound();
-                }, 500);
-            }
-        }
-
-        // Event Listener for MOUSE Clicks on the reaction area
-        reactionBoxEl.addEventListener('mousedown', (e) => {
-            if (e.button !== 0) return; // Only process left-click
-            handleReactionInput(performance.now());
-        });
-        
-        // Event Listener for SPACEBAR (NEW)
-        window.addEventListener('keydown', (e) => {
-            // Check if the spacebar was pressed and not in an input field (so it doesn't interfere with forms)
-            if (e.code === 'Space' && 
-                document.activeElement.tagName !== 'INPUT' && 
-                document.activeElement.tagName !== 'BUTTON') { 
-                
-                e.preventDefault(); // Prevent default spacebar action (like scrolling)
-                handleReactionInput(performance.now());
-            }
-        });
-
-        function handleReaction(isSuccess, rt_ms = 0) {
-            stopFlashCue();
-            const currentMode = reactionBoxEl.dataset.mode;
-            
-            const result = {
-                // Added Session ID and Timestamp for data collection integrity
-                session_id: currentSessionID, // Use the current block's ID
-                timestamp: new Date().toISOString(), 
-                mode: currentMode,
-                round: currentTrialIndex + 1,
-                interval_ms: currentIntervals[currentTrialIndex], // Keep for experimenter data
-                rt_ms: isSuccess ? Math.round(rt_ms) : null,
-                success: isSuccess,
-                is_false_start: !isSuccess && mode !== 'flashing', 
-            };
-            results.push(result);
-            
-            const roundNumber = currentTrialIndex + 1; // Current round number
-            const totalRounds = currentIntervals.length;
-            const rtDisplay = isSuccess ? result.rt_ms : 0;
-            
-            // 1. Display Result for JUST finished Round
-            let completionStatus;
-            if (isSuccess) {
-                completionStatus = `(Round ${roundNumber}/${totalRounds}) (Complete!)`;
-            } else {
-                completionStatus = `(Round ${roundNumber}/${totalRounds}) (MISSED! Clicked too late.)`;
-            }
-            // Update status with the result and RT
-            updateStatusDisplay(`${baseStatusText} ${completionStatus}`, rtDisplay);
-            
-            currentTrialIndex++;
-
-            if (currentTrialIndex < currentIntervals.length) {
-                // Schedule NEXT round. startRound will handle the status update for the countdown.
-                setTimeout(startRound, 1500); 
-            } else {
-                // Phase Complete
-                mode = 'complete';
-                updateStatusDisplay(`Mode Complete! ${currentTrialIndex} trials recorded.`, rtDisplay);
-                setButtonsDisabled(false); // Re-enable buttons, pause is now disabled
-                showBoxContent('DONE!');
-
-                // --- AUTOMATED SUBMISSION TRIGGER ---
-                autoSubmitBlock(currentSessionID);
-                // --- END AUTOMATED SUBMISSION ---
-            }
-        }
-
-        // --- RESULTS HANDLING & AUTOMATED SUBMISSION ---
 
         /**
-         * Automatically sends the results for the completed block to the Google Sheet.
-         * @param {string} sessionId The ID of the block that just finished.
+         * Updates the central status display.
          */
-        async function autoSubmitBlock(sessionId) {
-            const hasScriptUrl = GOOGLE_SCRIPT_URL !== 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE';
-            
-            // Filter the global results array to only get the data from the just-completed block
-            const blockResults = results.filter(r => r.session_id === sessionId);
+        function updateStatus(text, color = 'text-gray-800') {
+            statusDisplay.textContent = text;
+            statusDisplay.className = `text-lg font-bold absolute left-1/2 transform -translate-x-1/2 ${color}`;
+        }
+        
+        /**
+         * Clears all active timeouts and intervals.
+         */
+        function clearAllTimers() {
+            Object.values(gameState.timers).forEach(timer => {
+                if (timer) clearTimeout(timer);
+                if (timer) clearInterval(timer);
+            });
+            gameState.timers = { countdown: null, cue: null, timeout: null, delay: null };
+        }
 
-            if (!hasScriptUrl) {
-                 submissionStatusEl.textContent = 'Submission Failed: GOOGLE_SCRIPT_URL not set. Data saved locally.';
-                 submissionStatusEl.classList.add('text-red-600');
-                 return;
+        // --- UI State Management ---
+
+        /**
+         * Enables/disables mode selection buttons based on exclusivity rules.
+         */
+        function updateModeButtons() {
+            // Check if any round has been completed in the respective category
+            const hasStartedFixed = gameState.hasStartedFixedPractice || gameState.results.some(r => r.mode.includes('fixed'));
+            const hasStartedVariable = gameState.hasStartedVariablePractice || gameState.results.some(r => r.mode.includes('variable'));
+
+            const disableAllModes = gameState.isRunning || gameState.isPaused;
+
+            // 38. If Variable has started, Fixed is disabled.
+            btnFixedPractice.disabled = disableAllModes || hasStartedVariable;
+            btnTestFixed.disabled = disableAllModes || hasStartedVariable;
+
+            // 39. If Fixed has started, Variable is disabled.
+            btnVariablePractice.disabled = disableAllModes || hasStartedFixed;
+            btnTestVariable.disabled = disableAllModes || hasStartedFixed;
+        }
+
+        /**
+         * Manages the pause/resume state and button icon.
+         */
+        function togglePause() {
+            if (!gameState.isRunning) return;
+
+            gameState.isPaused = !gameState.isPaused;
+            if (gameState.isPaused) {
+                // 34. Pause button text when game is paused (resume is available): '▶'
+                btnPauseResume.textContent = '▶';
+                clearAllTimers();
+                reactionBox.classList.remove('flash-cue'); // Remove flash in case it was mid-flash
+                countdownText.textContent = 'Paused';
+                updateStatus('Paused', 'text-orange-500');
+                updateModeButtons();
+            } else {
+                // 35. Pause button text when game is running (pause is available): '⏸'
+                btnPauseResume.textContent = '⏸';
+                // Fix: Restart the current round's countdown after a delay
+                updateStatus(`Resumed. Restarting Round ${gameState.currentRound}...`, 'text-green-500');
+                updateModeButtons();
+                gameState.timers.delay = setTimeout(startCountdown, POST_TRIAL_DELAY_MS); 
             }
+        }
+
+        /**
+         * Function to restart the current round's countdown.
+         * Used for False Starts and Resuming.
+         */
+        function restartCurrentRound() {
+            if (gameState.isPaused || !gameState.isRunning) return;
+            startCountdown();
+        }
+
+        /**
+         * Handles the click or spacebar reaction from the user.
+         */
+        window.handleReaction = function(event) {
+            // Ensure reaction only processes if game is running and not paused
+            if (!gameState.isRunning || gameState.isPaused) return;
+
+            // Check if input is from mouse or spacebar and not a form input (3)
+            if (event.type === 'click' && event.target !== reactionBox) return;
+            if (event.type === 'keydown' && event.key !== ' ' && event.key !== 'Spacebar') return;
             
-            if (blockResults.length === 0) {
-                submissionStatusEl.textContent = 'Warning: Block completed but no new data to submit.';
-                submissionStatusEl.classList.add('text-red-600');
-                return;
+            // False Start Check
+            if (gameState.isWaitingForCue) {
+                return handleFalseStart();
             }
 
-
-            submissionStatusEl.textContent = `Auto-submitting ${blockResults.length} trial(s) from ${baseStatusText}...`;
-            submissionStatusEl.classList.remove('text-green-600', 'text-red-600');
-            
-            // Add a brief delay so the user can see the "DONE!" message before the submission status updates
-            await delay(100); 
-
-            try {
-                // Prepare the payload for submission
-                const payload = {
-                    metadata: {
-                        submission_time: new Date().toISOString(),
-                        session_id: sessionId,
-                        mode_name: baseStatusText,
-                        user_agent: navigator.userAgent,
-                        // NEW: Participant demographics added to metadata
-                        full_name: participantInfo.fullName,
-                        grade: participantInfo.grade,
-                        sex: participantInfo.sex
-                    },
-                    data: blockResults
-                };
-
-                const response = await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors', // Required for Google Apps Script to avoid CORS issues
-                    cache: 'no-cache',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(payload)
+            // Hit Check
+            if (gameState.isWaitingForReaction) {
+                clearAllTimers();
+                
+                const reactionTime = Date.now() - gameState.cueTime;
+                
+                // Record Result
+                gameState.results.push({
+                    round: gameState.currentRound,
+                    mode: gameState.mode,
+                    interval: gameState.cueTime - gameState.startTime,
+                    rt: reactionTime,
+                    status: 'HIT'
                 });
 
-                // Since we use 'no-cors', we rely on the fetch succeeding to indicate the script was called.
-                submissionStatusEl.textContent = `✅ Successfully submitted ${baseStatusText} results to Google Sheet.`;
-                submissionStatusEl.classList.remove('text-red-600');
-                submissionStatusEl.classList.add('text-green-600');
+                // Display Feedback and RT
+                countdownText.textContent = `${reactionTime.toFixed(0)} ms`;
+                reactionBox.classList.remove('flash-cue');
+                reactionBox.classList.remove('bg-red-400');
+                updateStatus(`HIT! RT: ${reactionTime.toFixed(0)} ms`, 'text-green-600');
+                lastRtDisplay.textContent = `Last RT: ${reactionTime.toFixed(0)} ms`;
 
-            } catch (error) {
-                console.error('Submission failed:', error);
-                submissionStatusEl.textContent = `❌ Submission failed for ${baseStatusText}. Check console. Data is saved locally.`;
-                submissionStatusEl.classList.remove('text-green-600');
-                submissionStatusEl.classList.add('text-red-600');
+                gameState.isWaitingForReaction = false;
+                
+                // Next Round
+                gameState.timers.delay = setTimeout(nextRound, POST_TRIAL_DELAY_MS);
+                return;
+            }
+
+            // Default state: do nothing
+        }
+
+        /**
+         * Handles a reaction before the cue flashes.
+         */
+        function handleFalseStart() {
+            clearAllTimers();
+            
+            // Record Result
+            gameState.results.push({
+                round: gameState.currentRound,
+                mode: gameState.mode,
+                interval: null,
+                rt: null,
+                status: 'FALSE START'
+            });
+
+            // 26. False Start Feedback (flash red for 500ms)
+            countdownText.textContent = 'FALSE START';
+            reactionBox.classList.add('bg-red-400', 'text-white');
+            reactionBox.classList.remove('flash-cue');
+            updateStatus('FALSE START! Restarting round...', 'text-red-600');
+            
+            // Do NOT increment currentRound, instead restart the current round
+            gameState.isWaitingForCue = false;
+            gameState.isWaitingForReaction = false;
+
+            gameState.timers.delay = setTimeout(() => {
+                reactionBox.classList.remove('bg-red-400', 'text-white');
+                restartCurrentRound(); // Restart the same round
+            }, 500); // 500ms flash
+        }
+
+        /**
+         * Handles a missed reaction (timeout).
+         */
+        function handleTimeout() {
+            clearAllTimers();
+            
+            // Record Result
+            gameState.results.push({
+                round: gameState.currentRound,
+                mode: gameState.mode,
+                interval: gameState.cueTime - gameState.startTime,
+                rt: null,
+                status: 'MISSED'
+            });
+
+            // Display Feedback
+            countdownText.textContent = 'MISSED';
+            reactionBox.classList.remove('flash-cue');
+            updateStatus('MISSED! Starting next round...', 'text-yellow-600');
+            
+            gameState.isWaitingForReaction = false;
+
+            // Next Round (increments round count)
+            gameState.timers.delay = setTimeout(nextRound, POST_TRIAL_DELAY_MS);
+        }
+
+        /**
+         * Executes the blue flash cue and starts the reaction timer.
+         */
+        function cueFlash() {
+            gameState.cueTime = Date.now();
+            gameState.isWaitingForCue = false;
+            gameState.isWaitingForReaction = true;
+            
+            // Apply Blue Cue State
+            reactionBox.classList.add('flash-cue');
+            countdownText.textContent = ''; // Change 3: Blank instead of 'CLICK!'
+            updateStatus('REACT NOW!', 'text-blue-500');
+
+            // 36. Missed Trial Timeout (10 seconds)
+            gameState.timers.timeout = setTimeout(handleTimeout, MISSED_TIMEOUT_MS);
+        }
+
+        /**
+         * Starts the 3-2-1 countdown sequence.
+         */
+        function startCountdown() {
+            if (gameState.isPaused || !gameState.isRunning) return;
+
+            let count = 3;
+            reactionBox.classList.remove('flash-cue');
+            countdownText.textContent = count;
+            updateStatus(`Round ${gameState.currentRound}/${gameState.totalRounds}. Get Ready...`);
+
+            // 33. Countdown (1000ms delay)
+            gameState.timers.countdown = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    countdownText.textContent = count;
+                } else if (count === 0) {
+                    clearInterval(gameState.timers.countdown);
+                    countdownText.textContent = ''; // Change 2: Blank after 1 (0 is not shown)
+                    updateStatus('WAIT for the flash', 'text-gray-700');
+                    startRoundTimer();
+                }
+            }, 1000);
+        }
+
+        /**
+         * Sets the main delay timer for the cue flash.
+         */
+        function startRoundTimer() {
+            gameState.isWaitingForCue = true;
+            gameState.startTime = Date.now();
+
+            let interval;
+            
+            // Determine the interval based on the mode
+            if (gameState.mode === 'fixed-practice') {
+                interval = FIXED_INTERVAL_MS; // 27.
+            } else if (gameState.mode === 'fixed-test') {
+                interval = TEST_FIXED_MS; // 28.
+            } else if (gameState.mode === 'variable-practice' || gameState.mode === 'variable-test') {
+                // Use the next interval from the randomized array
+                interval = gameState.intervalArray[gameState.intervalIndex];
+            } else {
+                console.error("Unknown game mode:", gameState.mode);
+                interval = FIXED_INTERVAL_MS;
+            }
+
+            // Set the cue timer
+            gameState.timers.cue = setTimeout(cueFlash, interval);
+        }
+
+        /**
+         * Advances to the next round or ends the session.
+         */
+        function nextRound() {
+            if (gameState.isPaused || !gameState.isRunning) return;
+
+            gameState.currentRound++; // Increment round count
+            
+            // Advance variable index only if not a false start restart, and only if not a fixed mode
+            if (gameState.mode.includes('variable')) {
+                gameState.intervalIndex++;
+            }
+            
+            if (gameState.currentRound > gameState.totalRounds) {
+                // Session End
+                endSession();
+            } else {
+                // Next Round
+                startCountdown();
             }
         }
 
-        window.displayResultsModal = function() {
-            if (!participantInfo.fullName) {
-                showInfoModal();
+        /**
+         * Initializes a new session with the selected mode.
+         */
+        function startSession(mode, totalRounds) {
+            clearAllTimers();
+
+            // Set exclusivity flags (38 & 39)
+            if (mode.includes('fixed')) gameState.hasStartedFixedPractice = true;
+            if (mode.includes('variable')) gameState.hasStartedVariablePractice = true;
+            
+            // Reset State
+            gameState.mode = mode;
+            gameState.isRunning = true;
+            gameState.isPaused = false;
+            gameState.currentRound = 0; // nextRound() will increment this to 1
+            gameState.totalRounds = totalRounds;
+            gameState.results = [];
+            
+            // Prepare Variable Intervals if needed (32)
+            if (mode === 'variable-practice' || mode === 'variable-test') {
+                gameState.intervalArray = randomizeArray(VARIABLE_INTERVALS_MS);
+                gameState.intervalIndex = 0;
+                // For a single test round, use only the first randomized value
+                if (totalRounds === SINGLE_ROUND) {
+                    gameState.intervalArray = [gameState.intervalArray[0]];
+                }
+            } else {
+                gameState.intervalArray = [];
+                gameState.intervalIndex = 0;
+                if (totalRounds === SINGLE_ROUND) {
+                    gameState.totalRounds = SINGLE_ROUND;
+                }
+            }
+
+            // UI updates
+            btnPauseResume.disabled = false;
+            btnPauseResume.textContent = '⏸';
+            updateModeButtons();
+            
+            // Start the first round
+            nextRound(); 
+        }
+
+        /**
+         * Cleans up after a session and saves results.
+         */
+        function endSession() {
+            clearAllTimers();
+            gameState.isRunning = false;
+            gameState.isWaitingForCue = false;
+            gameState.isWaitingForReaction = false;
+            
+            // UI updates
+            btnPauseResume.disabled = true;
+            countdownText.textContent = 'Complete!';
+            updateStatus('Session Complete. View Results.', 'text-green-700');
+            updateModeButtons();
+            
+            // Save results (calls the imported Firebase function)
+            window.saveResults(gameState.mode, gameState.totalRounds, gameState.results);
+            
+            // Automatically show results for the completed session
+            window.displayAllResults();
+        }
+
+        // --- Event Listeners and Initialization ---
+
+        // Participant Modal Submission (2)
+        participantForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            
+            // Input Validation
+            const fullName = formData.get('fullName').trim();
+            const gradeLevel = parseInt(formData.get('gradeLevel'));
+            
+            if (!/^[A-Za-z\s]+$/.test(fullName) || fullName.length < 2) {
+                // In a real app, this would be an inline error message, but for simple validation:
+                console.error("Please enter a valid full name (letters and spaces only).");
+                return;
+            }
+            if (gradeLevel < 1 || gradeLevel > 12) {
+                console.error("Grade level must be between 1 and 12.");
                 return;
             }
             
-            resultsDisplayEl.textContent = generateResultsText();
-            resultsModalEl.style.display = 'flex';
-            
-            // Update submission status for the modal view based on current state
-            if (results.length === 0) {
-                 submissionStatusEl.textContent = 'No trials have been completed yet.';
-                 submissionStatusEl.classList.remove('text-red-600', 'text-green-600');
-            } else if (submissionStatusEl.textContent.includes('Successfully submitted')) {
-                // Do nothing if it already shows success from the auto-submit
-            } else if (GOOGLE_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE') {
-                 submissionStatusEl.textContent = 'Data submission is disabled. Please set the GOOGLE_SCRIPT_URL constant in the code.';
-                 submissionStatusEl.classList.add('text-red-600');
-            } else {
-                 submissionStatusEl.textContent = 'Results are saved in your browser. Automatic submission is pending block completion.';
-                 submissionStatusEl.classList.remove('text-red-600', 'text-green-600');
-            }
-            submissionStatusEl.classList.remove('hidden');
-        }
-
-        function generateResultsText() {
-            if (results.length === 0) {
-                return "No trials have been completed yet. Please run a training set or test first.";
-            }
-
-            const modeMap = {
-                fixed_practice: 'Training Set A',
-                variable_practice: 'Training Set B',
-                test_variable: 'Reaction Test 1 (4.83s Novel)',
-                test_fixed: 'Reaction Test 2 (3.5s Trained)',
+            // Store Participant Info
+            gameState.participant = {
+                fullName: fullName,
+                gradeLevel: gradeLevel,
+                sex: formData.get('sex')
             };
 
-            let output = `--- Experiment Results Summary (${new Date().toLocaleString()}) ---\n`;
-            output += `Participant: ${participantInfo.fullName} (Grade: ${participantInfo.grade}, Sex: ${participantInfo.sex})\n\n`;
+            infoModal.classList.add('hidden');
+            countdownText.textContent = 'Welcome';
+            updateStatus('Ready');
+        });
 
-            // Group results by mode
-            const groupedResults = results.reduce((acc, result) => {
-                acc[result.mode] = acc[result.mode] || [];
-                acc[result.mode].push(result);
-                return acc;
-            }, {});
+        // Mode Buttons Click
+        document.querySelectorAll('.btn-mode').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const id = e.target.id;
+                let mode, rounds;
 
-            // Iterate over each mode
-            for (const modeKey in groupedResults) {
-                const data = groupedResults[modeKey];
-                const modeName = modeMap[modeKey] || modeKey;
-                const successfulRTs = data
-                    .filter(d => d.success && d.rt_ms !== null)
-                    .map(d => d.rt_ms);
+                if (id === 'btn-fixed-practice') { // 45. Training Set A
+                    mode = 'fixed-practice';
+                    rounds = PRACTICE_ROUNDS;
+                } else if (id === 'btn-variable-practice') { // 46. Training Set B
+                    mode = 'variable-practice';
+                    rounds = PRACTICE_ROUNDS;
+                } else if (id === 'btn-test-variable') { // 47. Reaction Test 1
+                    mode = 'variable-test';
+                    rounds = SINGLE_ROUND; 
+                } else if (id === 'btn-test-fixed') { // 48. Reaction Test 2
+                    mode = 'fixed-test';
+                    rounds = SINGLE_ROUND; 
+                } else {
+                    return;
+                }
 
-                const avgRT = successfulRTs.length > 0 ? (successfulRTs.reduce((sum, rt) => sum + rt, 0) / successfulRTs.length) : 0;
+                if (gameState.participant) {
+                    startSession(mode, rounds);
+                } else {
+                    // Show custom message box instead of alert/confirm
+                    countdownText.textContent = "Please provide participant info first.";
+                    updateStatus('Start Experiment Required', 'text-red-500');
+                    infoModal.classList.remove('hidden');
+                }
+            });
+        });
+
+        // Pause/Resume Button
+        btnPauseResume.addEventListener('click', togglePause);
+
+        // View Results Button (49)
+        btnResults.addEventListener('click', () => {
+             // Fetch and display results (calls the imported Firebase function)
+            window.displayAllResults();
+        });
+
+        // Reaction Area Click (3)
+        reactionBox.addEventListener('click', window.handleReaction);
+
+        // Global Spacebar Listener (3)
+        document.onkeydown = function(e) {
+            // Check if spacebar is pressed
+            if (e.key === ' ' || e.key === 'Spacebar') {
+                // Check if an input field is focused (prevent default Spacebar action on input)
+                if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'BUTTON') {
+                    return; // Allow input fields and buttons to process the spacebar
+                }
                 
-                output += `=====================================\n`;
-                output += `Mode: ${modeName}\n`;
-                output += `Total Trials: ${data.length}\n`;
-                output += `Successful Clicks: ${successfulRTs.length}\n`;
-                output += `Average RT: ${avgRT.toFixed(3)} ms\n`;
-                output += `\nTrial-by-Trial Data (RT in milliseconds):\n`;
-                output += `-------------------------------------\n`;
-
-                data.forEach(d => {
-                    const rt_display = d.success && d.rt_ms !== null ? d.rt_ms.toFixed(0) : 
-                                       d.is_false_start ? 'FALSE START' : 'MISSED';
-                    // UPDATED: Removed interval display
-                    output += `Round ${d.round}: RT=${rt_display}\n`; 
-                });
-                output += '\n';
+                e.preventDefault(); // Prevent scrolling
+                window.handleReaction(e); // Process as a reaction
             }
+        };
 
-            return output;
-        }
-
-        // --- INITIALIZATION ---
-
-        function resetGame() {
-            // This function is for initial setup and general cleanup
-            mode = 'idle';
-            currentTrialIndex = 0;
-            currentIntervals = [];
-            cueStartTime = null;
-            clearTimeout(timeoutHandle);
-            stopFlashCue();
-            updateStatusDisplay("Ready to begin experiment.");
-            lastResultEl.textContent = '-';
-            showBoxContent('Welcome');
-            pauseResumeBtn.textContent = '⏸'; // Set initial symbol
-            pauseResumeBtn.disabled = true; // Initially disabled until a game starts
-            
-            // Set initial submission status
-            if (GOOGLE_SCRIPT_URL !== 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE') {
-                 submissionStatusEl.textContent = 'Submission is enabled and will occur automatically upon mode completion.';
-                 submissionStatusEl.classList.add('text-green-600');
-            } else {
-                 submissionStatusEl.textContent = 'Warning: GOOGLE_SCRIPT_URL placeholder is set. Data will not be submitted.';
-                 submissionStatusEl.classList.add('text-red-600');
-            }
-            submissionStatusEl.classList.remove('hidden');
-            
-            // NEW: Show info modal if data hasn't been collected
-            if (!participantInfo.fullName) {
-                showInfoModal();
-            } else {
-                // Only enable buttons if info is collected (and apply exclusivity checks)
-                setButtonsDisabled(false);
-            }
-        }
-        
-        // --- Randomize Variable Intervals on Load ---
-        // Ensure variable intervals are randomized once at the start
-        VARIABLE_INTERVALS_MS.sort(() => Math.random() - 0.5);
-
-        // Start the game in a clean state once the page loads
-        document.addEventListener('DOMContentLoaded', resetGame);
-        
+        // Initial UI setup (42)
+        updateStatus('Ready');
+        updateModeButtons();
+        // The info modal starts visible as per requirement (2)
     </script>
 </body>
 </html>
-
-
