@@ -355,23 +355,35 @@
             }
         }
         
-        // NOTE: The Firebase fetching logic remains the same as in the CSV version
-        // so that the user can still view their *historical* data stored in Firestore.
+        /**
+         * Fetches and displays all historical results from Firestore.
+         * FIX: Ensures the modal is shown immediately and provides clear feedback 
+         * if the database is not ready yet.
+         */
         window.showAllHistoricalResults = async function() {
-            if (!db || !userId) {
-                console.error("Database not initialized or User ID not set. Cannot view results.");
-                return;
-            }
-
             const loadingMessage = document.getElementById('results-loading-message');
             const resultsTable = document.getElementById('results-table');
             const resultsTableBody = document.getElementById('results-table-body');
             const exportStatus = document.getElementById('export-status');
             
+            // CRITICAL FIX: Show modal immediately so the user knows the button press registered
+            document.getElementById('results-modal').classList.remove('hidden');
+
+            if (!db || !userId) {
+                console.error("Database not initialized or User ID not set. Cannot view results.");
+                loadingMessage.textContent = 'Error: Database connection not ready. Please wait a moment and try again.';
+                loadingMessage.classList.remove('hidden');
+                resultsTable.classList.add('hidden');
+                return;
+            }
+            
+            // Set initial state for loading
+            loadingMessage.textContent = 'Loading results...';
             loadingMessage.classList.remove('hidden');
             resultsTable.classList.add('hidden');
             resultsTableBody.innerHTML = '';
             exportStatus.classList.add('hidden'); // Clear status
+
 
             const path = `/artifacts/${appId}/users/${userId}/results`;
             
@@ -381,8 +393,7 @@
                 
                 if (querySnapshot.empty) {
                     loadingMessage.textContent = 'No past sessions found.';
-                    document.getElementById('results-modal').classList.remove('hidden');
-                    return;
+                    return; // Modal is already visible
                 }
 
                 const modeOrder = {
@@ -485,12 +496,10 @@
                 loadingMessage.classList.add('hidden');
                 resultsTable.classList.remove('hidden');
 
-                document.getElementById('results-modal').classList.remove('hidden');
 
             } catch (error) {
                 console.error("Error fetching results: ", error);
                 loadingMessage.textContent = 'Error loading data. Check console for details.';
-                document.getElementById('results-modal').classList.remove('hidden');
             }
         };
 
@@ -933,11 +942,30 @@
 
         document.onkeydown = function(e) {
             if (e.key === ' ' || e.key === 'Spacebar') {
-                if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'BUTTON') {
+                
+                // Check if the user is typing in an input field. If so, let them type a space.
+                const activeTag = document.activeElement.tagName;
+                const activeType = document.activeElement.type;
+                const isTyping = (activeTag === 'INPUT' || activeTag === 'TEXTAREA') && 
+                                 (activeType === 'text' || activeType === 'number');
+
+                if (isTyping) {
+                    return; 
+                }
+
+                e.preventDefault(); 
+
+                // 1. If paused, spacebar resumes (addresses user request)
+                if (gameState.isRunning && gameState.isPaused) {
+                    togglePause();
                     return;
                 }
-                e.preventDefault(); 
-                window.handleReaction(e); 
+                
+                // 2. If running (or waiting for a cue), spacebar acts as reaction
+                if (gameState.isRunning) {
+                    window.handleReaction(e);
+                    return;
+                }
             }
         };
 
@@ -952,3 +980,4 @@
     </script>
 </body>
 </html>
+
