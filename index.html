@@ -742,6 +742,11 @@
          * Fetches and displays all historical results from Local Storage.
          */
         window.showAllHistoricalResults = function() {
+            // NEW: Pause the game if it is running when opening results modal
+            if (gameState.isRunning && !gameState.isPaused) {
+                togglePause(); // This pauses the game and updates the UI/status
+            }
+
             const loadingMessage = document.getElementById('results-loading-message');
             const resultsTable = document.getElementById('results-table');
             const resultsTableBody = document.getElementById('results-table-body');
@@ -827,7 +832,7 @@
             // --- 2. Update Summary Area ---
             document.getElementById('participant-name').textContent = participantName; 
             document.getElementById('results-total-sessions').textContent = allSessions.length;
-            document.getElementById('results-total-rounds').textContent = allRts.length; // Total HITs as total relevant rounds
+            document.getElementById('results-total-rounds').textContent = totalRounds; // Now total intended rounds
             document.getElementById('results-avg-rt').textContent = overallAvgRt;
             document.getElementById('results-hits').textContent = totalHits;
             document.getElementById('results-false-starts').textContent = totalFalseStarts;
@@ -1021,6 +1026,7 @@
             }
         };
 
+        // Window blur event to pause when tab/window focus is lost
         window.addEventListener('blur', () => {
             if (gameState.isRunning && !gameState.isPaused) {
                 togglePause(); 
