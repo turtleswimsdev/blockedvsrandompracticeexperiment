@@ -99,7 +99,7 @@
             <button id="btn-test-fixed" class="btn-mode bg-gray-700 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-200 disabled:opacity-50">
                 Reaction Test 2
             </button>
-            <!-- RESULTS BUTTON - Now enabled by default and renamed -->
+            <!-- RESULTS BUTTON - Now always visible and enabled -->
             <button id="btn-results" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-200">
                 View Results
             </button>
@@ -141,7 +141,7 @@
                     </p>
                 </div>
                 
-                <h3 class="text-lg font-semibold mt-6 mb-2">Unified Round Breakdown (Ordered by Experiment Phase)</h3>
+                <h3 class="text-lg font-semibold mt-6 mb-2">Unified Round Breakdown</h3>
                 <div id="results-loading-message" class="text-center p-8 text-gray-500">Loading results...</div>
 
                 <div class="overflow-x-auto">
@@ -214,7 +214,6 @@
 
     <script>
         // --- LOCAL STORAGE FUNCTIONS ---
-        // New utility functions for local data persistence
         
         /**
          * Safely loads all session data from localStorage.
@@ -222,10 +221,13 @@
          */
         function loadLocalResults() {
             const json = localStorage.getItem('reactionTrainerSessions');
+            if (!json) return [];
             try {
-                return json ? JSON.parse(json) : [];
+                const sessions = JSON.parse(json);
+                console.log(`Loaded ${sessions.length} sessions from Local Storage.`);
+                return Array.isArray(sessions) ? sessions : []; // Ensure it's an array
             } catch (e) {
-                console.error("Error parsing local results, resetting storage.", e);
+                console.error("Error parsing local results. Data might be corrupted.", e);
                 return [];
             }
         }
@@ -238,6 +240,7 @@
             const sessions = loadLocalResults();
             sessions.push(sessionData);
             localStorage.setItem('reactionTrainerSessions', JSON.stringify(sessions));
+            console.log("Session saved. Total sessions now:", sessions.length);
         }
 
         // --- 3.A. Game Constants ---
@@ -408,15 +411,24 @@
             }, 1000);
         }
 
+        /**
+         * Safely advances to the next round or ends the session.
+         * Fixes the potential extra round bug by checking the count BEFORE incrementing.
+         */
         function nextRound() {
-            if (gameState.isPaused || !gameState.isRunning || gameState.isSessionComplete) return;
+            // Guard clause: If already paused, done, or not running, exit immediately.
+            if (gameState.isPaused || !gameState.isRunning || gameState.isSessionComplete) {
+                return;
+            }
 
-            gameState.currentRound++; 
-            
-            if (gameState.currentRound > gameState.totalRounds) {
+            // Check if the current round is the LAST intended round.
+            // If currentRound is 30 and totalRounds is 30, it means round 30 just finished.
+            if (gameState.currentRound === gameState.totalRounds) {
                 endSession();
                 return;
             }
+
+            gameState.currentRound++; 
             
             if (gameState.mode === 'variable-practice') {
                 gameState.intervalIndex++;
@@ -426,12 +438,13 @@
         }
 
         function endSession() {
+            // Set the completion flag immediately to prevent further calls to nextRound()
+            gameState.isSessionComplete = true; 
             clearAllTimers();
             gameState.isRunning = false;
             gameState.isWaitingForCue = false;
             gameState.isWaitingForReaction = false;
-            gameState.isSessionComplete = true; 
-
+            
             // --- CRITICAL STEP: Save results locally ---
             window.saveResults(gameState.mode, gameState.totalRounds, gameState.results);
 
@@ -499,8 +512,9 @@
             gameState.isWaitingForCue = false;
             gameState.isWaitingForReaction = false;
 
+            // Give a short delay before restarting the current round
             gameState.timers.delay = setTimeout(() => {
-                restartCurrentRound(); 
+                startCountdown(); 
             }, 500); 
         }
         
@@ -550,7 +564,7 @@
         }
 
         function startSession(mode, totalRounds) {
-            if (gameState.isSessionComplete && gameState.isRunning) return; 
+            if (gameState.isRunning) return; 
 
             clearAllTimers();
 
@@ -576,30 +590,30 @@
             btnPauseResume.disabled = false;
             updateModeButtons();
             
-            nextRound(); 
+            nextRound(); // Start the first round
         }
         
-        // --- Session Saving Logic (Replaces Firestore/GAS) ---
+        // --- Session Saving Logic ---
         window.saveResults = function(mode, totalRounds, results) {
             const dataToSave = {
-                id: crypto.randomUUID(), // Unique ID for this session
+                id: crypto.randomUUID(), // Kept for CSV download, but not displayed
                 participant: gameState.participant, 
                 mode: mode,
                 totalRounds: totalRounds,
-                timestamp: new Date().toISOString(),
+                timestamp: new Date().toISOString(), // Kept for CSV download, but not displayed
                 results: results
             };
             
             saveLocalSession(dataToSave);
-            console.log("Session results saved successfully to Local Storage.");
         };
 
         function formatMode(mode) {
+            // Participant-friendly names that hide "fixed" or "variable" details
             switch (mode) {
-                case 'fixed-practice': return 'Training Set A (Fixed)';
-                case 'variable-practice': return 'Training Set B (Variable)';
-                case 'variable-test': return 'Reaction Test 1 (Variable Cue)';
-                case 'fixed-test': return 'Reaction Test 2 (Fixed Cue)';
+                case 'fixed-practice': return 'Training Set A';
+                case 'variable-practice': return 'Training Set B';
+                case 'variable-test': return 'Reaction Test 1';
+                case 'fixed-test': return 'Reaction Test 2';
                 default: return mode;
             }
         }
@@ -610,10 +624,11 @@
         window.downloadCSV = function() {
             const allSessions = loadLocalResults();
             if (allSessions.length === 0) {
-                alert("No results to download."); // Using alert here for simple download failure
+                alert("No results to download. Please complete a session first."); 
                 return;
             }
 
+            // CSV Header includes all raw data, including IDs and timestamps for archival
             const header = [
                 "Session ID", "Participant Name", "Grade Level", "Sex", "Session Mode", 
                 "Timestamp", "Round Number", "RT (ms)", "Status", "Cue Interval (ms)"
@@ -621,23 +636,27 @@
             let csv = header.join(',') + '\n';
 
             allSessions.forEach(session => {
+                const participant = session.participant || {}; 
+                
+                // Base data for each session (ID and Timestamp are retained here for full data download)
                 const baseData = [
                     session.id, 
-                    session.participant.fullName.replace(/,/g, ''), // Remove commas from names
-                    session.participant.gradeLevel, 
-                    session.participant.sex,
-                    formatMode(session.mode).replace(/,/g, ''),
+                    (participant.fullName || 'N/A').replace(/,/g, ''), 
+                    participant.gradeLevel || 'N/A', 
+                    participant.sex || 'N/A',
+                    formatMode(session.mode || 'N/A').replace(/,/g, ''),
                     new Date(session.timestamp).toLocaleString()
-                ].map(v => `"${v}"`).join(','); // Quote base data
+                ].map(v => `"${v}"`).join(','); 
 
-                session.results.forEach(result => {
+                (session.results || []).forEach(result => {
                     const rowData = [
-                        result.round,
+                        result.round || 'N/A',
                         result.rt !== null ? result.rt.toFixed(0) : 'N/A',
-                        result.status,
+                        result.status || 'N/A',
                         result.interval !== null ? result.interval.toFixed(0) : 'N/A'
-                    ].map(v => `"${v}"`).join(','); // Quote result data
+                    ].map(v => `"${v}"`).join(','); 
 
+                    // Concatenate the quoted base data (excluding the last quote) with the row data
                     csv += baseData.slice(0, -1) + rowData + '\n';
                 });
             });
@@ -670,10 +689,20 @@
             resultsTableBody.innerHTML = ''; // Clear previous results
             
             if (allSessions.length === 0) {
-                loadingMessage.textContent = 'No past sessions found.';
+                loadingMessage.textContent = 'No past sessions found. Please complete a training or test session first.';
                 loadingMessage.classList.remove('hidden');
                 resultsTable.classList.add('hidden');
                 btnDownloadCSV.disabled = true;
+                
+                // Clear Summary area if no data
+                document.getElementById('participant-name').textContent = gameState.participant ? gameState.participant.fullName : '--'; 
+                document.getElementById('results-total-sessions').textContent = '0';
+                document.getElementById('results-total-rounds').textContent = '0';
+                document.getElementById('results-avg-rt').textContent = '--';
+                document.getElementById('results-hits').textContent = '0';
+                document.getElementById('results-false-starts').textContent = '0';
+                document.getElementById('results-missed').textContent = '0';
+                
                 return; 
             }
             
@@ -697,6 +726,7 @@
                 if (orderA !== orderB) {
                     return orderA - orderB;
                 }
+                // Fallback to sort by timestamp (older first)
                 return new Date(a.timestamp) - new Date(b.timestamp);
             });
 
@@ -705,18 +735,28 @@
             let totalMissed = 0;
             let totalRounds = 0;
             let allRts = [];
-            let participantName = allSessions[0].participant?.fullName || 'N/A';
+            
+            // --- 1. Calculate Summary Stats ---
+            let participantName = 'N/A';
+            if (gameState.participant && gameState.participant.fullName) {
+                participantName = gameState.participant.fullName; // Use current participant if available
+            } else if (allSessions.length > 0 && allSessions[0].participant && allSessions[0].participant.fullName) {
+                participantName = allSessions[0].participant.fullName; // Fallback to saved data
+            }
             
             allSessions.forEach(session => {
-                session.results.forEach(result => {
+                // Defensive access of results array
+                const results = session.results || [];
+                
+                results.forEach(result => {
                     if (result.status === 'HIT' && result.rt !== null) {
                         allRts.push(result.rt);
                     }
                 });
-                totalRounds += session.totalRounds;
-                totalHits += session.results.filter(r => r.status === 'HIT').length;
-                totalFalseStarts += session.results.filter(r => r.status === 'FALSE START').length;
-                totalMissed += session.results.filter(r => r.status === 'MISSED').length;
+                totalRounds += session.totalRounds || 0; // Use 0 if totalRounds is missing
+                totalHits += results.filter(r => r.status === 'HIT').length;
+                totalFalseStarts += results.filter(r => r.status === 'FALSE START').length;
+                totalMissed += results.filter(r => r.status === 'MISSED').length;
             });
             
             const overallAvgRt = allRts.length > 0 ? (allRts.reduce((a, b) => a + b, 0) / allRts.length).toFixed(0) : '--';
@@ -732,20 +772,23 @@
 
             // --- 3. Populate Unified Breakdown Table ---
             allSessions.forEach((session) => {
+                // Use the participant-friendly mode name
                 const displayMode = formatMode(session.mode);
+                const results = session.results || [];
                 
-                const sessionHits = session.results.filter(r => r.status === 'HIT');
+                const sessionHits = results.filter(r => r.status === 'HIT');
                 const sessionAvgRt = sessionHits.length > 0 ? (sessionHits.map(r => r.rt).reduce((a, b) => a + b, 0) / sessionHits.length).toFixed(0) : '--';
                 
                 const headerRow = resultsTableBody.insertRow();
                 headerRow.className = 'text-sm bg-blue-100 font-bold border-t-4 border-blue-400';
+                // Removed Date/Timestamp from the display header
                 headerRow.innerHTML = `
                     <td class="px-3 py-2 whitespace-nowrap" colspan="4">
-                        ${displayMode} (Session Avg RT: ${sessionAvgRt} ms, Date: ${new Date(session.timestamp).toLocaleDateString()})
+                        ${displayMode} (Session Avg RT: ${sessionAvgRt} ms)
                     </td>
                 `;
 
-                session.results.forEach((result, index) => {
+                results.forEach((result, index) => {
                     const row = resultsTableBody.insertRow();
                     row.className = 'text-sm ' + (index % 2 === 0 ? 'bg-white' : 'bg-gray-50'); 
                     
@@ -756,15 +799,15 @@
 
                     row.innerHTML = `
                         <td class="px-3 py-2 whitespace-nowrap">${displayMode}</td>
-                        <td class="px-3 py-2 whitespace-nowrap">${result.round}</td>
+                        <td class="px-3 py-2 whitespace-nowrap">${result.round || '--'}</td>
                         <td class="px-3 py-2 whitespace-nowrap">${rtDisplay}</td>
                         <td class="px-3 py-2 whitespace-nowrap">
-                            <span class="${statusClass}">${result.status}</span>
+                            <span class="${statusClass}">${result.status || '--'}</span>
                         </td>
                     `;
                 });
                 
-                const falseStartCount = session.results.filter(r => r.status === 'FALSE START').length;
+                const falseStartCount = results.filter(r => r.status === 'FALSE START').length;
                 const summaryRow = resultsTableBody.insertRow();
                 summaryRow.className = 'text-base bg-yellow-100 font-semibold border-b-2 border-yellow-400'; 
                 summaryRow.innerHTML = `
@@ -891,7 +934,7 @@
 
                 e.preventDefault(); 
 
-                // 1. If paused, spacebar resumes (addresses user request)
+                // 1. If paused, spacebar resumes
                 if (gameState.isRunning && gameState.isPaused) {
                     togglePause();
                     return;
