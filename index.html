@@ -236,15 +236,14 @@
         }
         
         // --- 3.A. Game Constants ---
-        // UPDATED: Fixed interval for Training Set A and Reaction Test 2 is now 3000ms (3 seconds)
         const FIXED_INTERVAL_MS = 3000; 
         const PRACTICE_ROUNDS = 30; 
         const SINGLE_ROUND = 1; 
-        const MISSED_TIMEOUT_MS = 10000; 
+        // UPDATED: Missed timeout changed to 2000 ms (2 seconds)
+        const MISSED_TIMEOUT_MS = 2000; 
         const POST_TRIAL_DELAY_MS = 1500; 
         
         // --- 3.B. Variable Intervals (Mandatory Array) ---
-        // UPDATED: New set of 30 variable intervals
         const VARIABLE_INTERVALS_MS = [
             3240, 2560, 3470, 1950, 4120,
             3610, 2190, 2830, 3750, 1380,
@@ -593,7 +592,7 @@
         }
         
         /**
-         * UPDATED: Missed rounds now restart the current round instead of advancing.
+         * Missed rounds now restart the current round instead of advancing.
          */
         function handleTimeout() {
             clearAllTimers();
@@ -695,7 +694,7 @@
         }
         
         /**
-         * UPDATED: Converts all stored data into a single-row, wide CSV format.
+         * Converts all stored data into a single-row, wide CSV format.
          */
         window.downloadCSV = function() {
             const allSessions = loadLocalResults();
