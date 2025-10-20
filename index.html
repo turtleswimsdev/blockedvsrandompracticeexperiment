@@ -236,17 +236,22 @@
         }
         
         // --- 3.A. Game Constants ---
-        const FIXED_INTERVAL_MS = 3500; 
+        // UPDATED: Fixed interval for Training Set A and Reaction Test 2 is now 3000ms (3 seconds)
+        const FIXED_INTERVAL_MS = 3000; 
         const PRACTICE_ROUNDS = 30; 
         const SINGLE_ROUND = 1; 
         const MISSED_TIMEOUT_MS = 10000; 
         const POST_TRIAL_DELAY_MS = 1500; 
         
         // --- 3.B. Variable Intervals (Mandatory Array) ---
+        // UPDATED: New set of 30 variable intervals
         const VARIABLE_INTERVALS_MS = [
-            1840, 2190, 3970, 5320, 2780, 4260, 1370, 3440, 2550, 5750,
-            3690, 1220, 4580, 5010, 2070, 3120, 4970, 1660, 2900, 3830,
-            2680, 4330, 2450, 5190, 1080, 3570, 2360, 4810, 5440, 1930
+            3240, 2560, 3470, 1950, 4120,
+            3610, 2190, 2830, 3750, 1380,
+            2930, 2740, 4510, 3260, 3340,
+            2120, 4050, 3080, 1660, 2370,
+            4780, 2430, 3180, 3870, 1220,
+            3020, 2670, 4430, 3130, 2410
         ];
 
         // --- DOM Elements ---
@@ -587,6 +592,9 @@
             }, 500); 
         }
         
+        /**
+         * UPDATED: Missed rounds now restart the current round instead of advancing.
+         */
         function handleTimeout() {
             clearAllTimers();
             
@@ -600,13 +608,17 @@
             
             saveOrUpdateSession(false); // Checkpoint after round
 
-            countdownText.textContent = 'MISSED';
+            // UI Update
+            countdownText.textContent = 'MISSED (Restarting)';
             reactionBox.classList.remove('flash-cue');
-            updateStatus('MISSED! Starting next round...', 'text-yellow-600');
+            updateStatus('MISSED! Restarting round...', 'text-yellow-600');
             
             gameState.isWaitingForReaction = false;
 
-            gameState.timers.delay = setTimeout(nextRound, POST_TRIAL_DELAY_MS);
+            // Restart the current round after a short delay
+            gameState.timers.delay = setTimeout(() => {
+                startCountdown(); 
+            }, 500); 
         }
 
         function startRoundTimer() {
@@ -619,7 +631,7 @@
             if (gameState.mode === 'variable-test') {
                  interval = 2360; 
             } 
-            // For Reaction Test 2 and Fixed Practice, interval is the long fixed one
+            // For Reaction Test 2 and Fixed Practice, interval is the long fixed one (FIXED_INTERVAL_MS = 3000ms)
             else if (gameState.mode === 'fixed-practice' || gameState.mode === 'fixed-test') {
                 interval = FIXED_INTERVAL_MS; 
             } 
@@ -650,6 +662,7 @@
             gameState.results = [];
             
             if (mode === 'variable-practice') {
+                // Variable practice uses the new, specified list of intervals
                 gameState.intervalArray = randomizeArray(VARIABLE_INTERVALS_MS);
                 gameState.intervalIndex = 0;
             } else {
@@ -682,7 +695,7 @@
         }
         
         /**
-         * Converts all stored data into a clean, simplified CSV format and triggers a download.
+         * UPDATED: Converts all stored data into a single-row, wide CSV format.
          */
         window.downloadCSV = function() {
             const allSessions = loadLocalResults();
@@ -691,46 +704,95 @@
                 return;
             }
 
-            // New, simplified CSV Header
-            const header = [
-                "Participant Name", "Grade Level", "Sex", "Session Mode", "Session Completion Status",
-                "Round Number", "RT (ms)", "Status"
-            ];
-            let csv = header.join(',') + '\n';
+            // --- 1. Aggregation ---
+            let participantInfo = { fullName: 'N/A', gradeLevel: 'N/A', sex: 'N/A' };
+            let rtMap = {};
+            let falseStartLocations = [];
+            let primaryTrainingMode = 'N/A';
+            let totalFalseStarts = 0;
 
+            // Aggregate data from all sessions
             allSessions.forEach(session => {
-                const participant = session.participant || {}; 
-                
-                const name = (participant.fullName || 'N/A').replace(/"/g, '""'); 
-                const grade = participant.gradeLevel || 'N/A'; 
-                const sex = participant.sex || 'N/A';
-                const mode = formatMode(session.mode || 'N/A').replace(/"/g, '""'); 
-                const completionStatus = session.isComplete ? 'Complete' : 'In Progress';
+                // Capture participant info from the first available session
+                if (session.participant) {
+                    participantInfo = session.participant;
+                }
+
+                // Determine the primary training mode completed (if any)
+                if (session.isComplete && (session.mode === 'fixed-practice' || session.mode === 'variable-practice')) {
+                     // Since training is exclusive, we take the one that was completed.
+                     primaryTrainingMode = formatMode(session.mode);
+                }
 
                 (session.results || []).forEach(result => {
-                    const rtDisplay = result.rt !== null ? result.rt.toFixed(0) : 'N/A';
+                    const key = result.mode === 'fixed-practice' || result.mode === 'variable-practice'
+                        ? `PRACTICE_${result.round}` 
+                        : (result.mode === 'variable-test' ? 'TEST_1' : 'TEST_2');
+                        
+                    // Successful Reaction Time (HIT)
+                    if (result.status === 'HIT' && result.rt !== null) {
+                        rtMap[key] = result.rt.toFixed(0);
+                    }
                     
-                    const rowArray = [
-                        `"${name}"`, 
-                        grade, 
-                        sex,
-                        `"${mode}"`, 
-                        completionStatus,
-                        result.round || 'N/A',
-                        rtDisplay,
-                        result.status || 'N/A'
-                    ];
+                    // False Starts & Missed (now restart the round, but we still track both for the False Starts count)
+                    if (result.status === 'FALSE START' || result.status === 'MISSED') {
+                        totalFalseStarts++;
+                        
+                        // Format location for the False Starts list
+                        let location;
+                        if (result.mode === 'fixed-practice') location = `A:${result.round} (${result.status[0]})`;
+                        else if (result.mode === 'variable-practice') location = `B:${result.round} (${result.status[0]})`;
+                        else if (result.mode === 'variable-test') location = `Test 1 (${result.status[0]})`;
+                        else if (result.mode === 'fixed-test') location = `Test 2 (${result.status[0]})`;
 
-                    csv += rowArray.join(',') + '\n';
+                        if (location) falseStartLocations.push(location);
+                    }
                 });
             });
 
+            // --- 2. Build Header ---
+            let header = ["Name", "Grade", "Sex", "Session Mode"];
+            for (let i = 1; i <= PRACTICE_ROUNDS; i++) {
+                header.push(`Round ${i}`);
+            }
+            header.push("Test 1", "Test 2", "False Starts");
+            
+            let csv = header.join(',') + '\n';
+
+            // --- 3. Build Data Row (Single Row) ---
+            let dataRow = [];
+            
+            // Static Info
+            const name = (participantInfo.fullName || 'N/A').replace(/"/g, '""'); 
+            dataRow.push(`"${name}"`);
+            dataRow.push(participantInfo.gradeLevel || 'N/A');
+            dataRow.push(participantInfo.sex || 'N/A');
+            dataRow.push(`"${primaryTrainingMode}"`);
+
+            // Practice Rounds (Rounds 1-30)
+            for (let i = 1; i <= PRACTICE_ROUNDS; i++) {
+                const key = `PRACTICE_${i}`;
+                dataRow.push(rtMap[key] || 'N/A'); // N/A if not attempted or not a HIT
+            }
+
+            // Tests
+            dataRow.push(rtMap['TEST_1'] || 'N/A');
+            dataRow.push(rtMap['TEST_2'] || 'N/A');
+
+            // False Starts (Total count and detailed list)
+            // Note: (F) = False Start, (M) = Missed/Timeout. Both restart the round.
+            let falseStartDetail = `Total: ${totalFalseStarts}. Details: ${falseStartLocations.join('; ')}`;
+            dataRow.push(`"${falseStartDetail.replace(/"/g, '""')}"`);
+
+            csv += dataRow.join(',') + '\n';
+
+            // --- 4. Download ---
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
             if (link.download !== undefined) { 
                 const url = URL.createObjectURL(blob);
                 link.setAttribute("href", url);
-                link.setAttribute("download", `ReactionTrainer_Results_${new Date().toISOString().slice(0, 10)}.csv`);
+                link.setAttribute("download", `ReactionTrainer_Summary_${new Date().toISOString().slice(0, 10)}.csv`);
                 link.style.visibility = 'hidden';
                 document.body.appendChild(link);
                 link.click();
@@ -738,9 +800,6 @@
             }
         };
 
-        /**
-         * Fetches and displays all historical results from Local Storage.
-         */
         window.showAllHistoricalResults = function() {
             // NEW: Pause the game if it is running when opening results modal
             if (gameState.isRunning && !gameState.isPaused) {
@@ -824,6 +883,7 @@
                 totalRounds += session.totalRounds || 0; 
                 totalHits += results.filter(r => r.status === 'HIT').length;
                 totalFalseStarts += results.filter(r => r.status === 'FALSE START').length;
+                // Note: MISSED rounds now behave like False Starts, but we track them separately in the UI display
                 totalMissed += results.filter(r => r.status === 'MISSED').length;
             });
             
@@ -873,7 +933,7 @@
                     const rtDisplay = result.rt !== null ? result.rt.toFixed(0) : '--';
                     let statusClass = 'text-gray-500';
                     if (result.status === 'HIT') statusClass = 'text-green-600 font-bold';
-                    else if (result.status === 'FALSE START') statusClass = 'text-red-600 font-bold';
+                    else if (result.status === 'FALSE START' || result.status === 'MISSED') statusClass = 'text-red-600 font-bold'; // Highlight both as errors
 
                     row.innerHTML = `
                         <td class="px-3 py-2 whitespace-nowrap">${displayMode}</td>
@@ -885,12 +945,12 @@
                     `;
                 });
                 
-                const falseStartCount = results.filter(r => r.status === 'FALSE START').length;
+                const errorCount = results.filter(r => r.status === 'FALSE START' || r.status === 'MISSED').length;
                 const summaryRow = resultsTableBody.insertRow();
                 summaryRow.className = 'text-base bg-yellow-100 font-semibold border-b-2 border-yellow-400'; 
                 summaryRow.innerHTML = `
-                    <td class="px-3 py-2 whitespace-nowrap" colspan="3">Total False Starts for this session:</td>
-                    <td class="px-3 py-2 whitespace-nowrap text-red-600">${falseStartCount}</td>
+                    <td class="px-3 py-2 whitespace-nowrap" colspan="3">Total Errors (False Starts/Missed) for this session:</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-red-600">${errorCount}</td>
                 `;
             });
         };
