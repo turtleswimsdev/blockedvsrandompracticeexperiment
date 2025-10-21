@@ -626,9 +626,9 @@
 
             let interval;
             
-            // For Reaction Test 1, the interval is always a short fixed one (2360ms) for true reaction measurement
+            // For Reaction Test 1, the interval is always a short fixed one (4192ms) for true reaction measurement
             if (gameState.mode === 'variable-test') {
-                 interval = 2360; 
+                 interval = 4192; 
             } 
             // For Reaction Test 2 and Fixed Practice, interval is the long fixed one (FIXED_INTERVAL_MS = 3000ms)
             else if (gameState.mode === 'fixed-practice' || gameState.mode === 'fixed-test') {
